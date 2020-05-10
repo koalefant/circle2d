@@ -1,19 +1,19 @@
+use crate::sdf::{find_circle_contacts, march_circle, sd_circle};
+#[cfg(feature = "serde_support")]
+use crate::serialization::{btreemap_as_pairs, hashmap_as_pairs};
 use crate::*;
-#[cfg(feature="serde_support")]
-use serde_derive::{Serialize, Deserialize};
-#[cfg(feature="serde_support")]
-use crate::serialization::{hashmap_as_pairs, btreemap_as_pairs};
 use rustc_hash::FxHashMap;
-use std::collections::{BTreeSet, BTreeMap};
-#[cfg(feature="hash_support")]
+#[cfg(feature = "serde_support")]
+use serde_derive::{Deserialize, Serialize};
+use std::collections::{BTreeMap, BTreeSet};
+#[cfg(feature = "hash_support")]
 use std::hash::{Hash, Hasher};
-use crate::sdf::{sd_circle, march_circle, find_circle_contacts};
 
 slotmap::new_key_type! {
     pub struct BodyKey;
 }
 
-#[cfg_attr(feature="serde_support", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
 #[derive(Clone)]
 pub struct World {
     bodies: slotmap::SlotMap<BodyKey, Body>,
@@ -26,9 +26,9 @@ pub struct World {
     island_prevs: slotmap::SecondaryMap<BodyKey, BodyKey>,
     idle_times: slotmap::SecondaryMap<BodyKey, Real>,
 
-    #[cfg_attr(feature="serde_support", serde(with="btreemap_as_pairs"))]
+    #[cfg_attr(feature = "serde_support", serde(with = "btreemap_as_pairs"))]
     pub persistent_contacts: BTreeMap<(BodyKey, BodyKey), PersistentContact>,
-    #[cfg_attr(feature="serde_support", serde(with="btreemap_as_pairs"))]
+    #[cfg_attr(feature = "serde_support", serde(with = "btreemap_as_pairs"))]
     pub sleeping_contacts: BTreeMap<(BodyKey, BodyKey), PersistentContact>,
     pub spatial_hash: SpatialHash,
 
@@ -38,7 +38,7 @@ pub struct World {
     pub collision_shape_flags: ShapeFlags,
 }
 
-#[cfg(feature="hash_support")]
+#[cfg(feature = "hash_support")]
 impl Hash for World {
     fn hash<H: Hasher>(&self, h: &mut H) {
         crate::hash_slot_map(&self.bodies, h);
@@ -56,19 +56,20 @@ impl Hash for World {
     }
 }
 
-
-#[cfg_attr(feature="serde_support", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, Hash, PartialEq)]
 pub enum BodyType {
     Static,
-    Dynamic
+    Dynamic,
 }
 
 impl Default for BodyType {
-    fn default()->Self { BodyType::Static }
+    fn default() -> Self {
+        BodyType::Static
+    }
 }
 
-#[cfg_attr(feature="hash_support", derive(Hash))]
+#[cfg_attr(feature = "hash_support", derive(Hash))]
 #[derive(Copy, Clone)]
 pub struct BodyDef {
     pub typ: BodyType,
@@ -79,31 +80,33 @@ pub struct BodyDef {
     pub inertia: Option<Real>,
     pub friction: Real,
     pub restitution: Real,
-    pub max_penetration: Real
+    pub max_penetration: Real,
 }
 
 impl Default for BodyDef {
-    fn default()->Self {
-        Self{
+    fn default() -> Self {
+        Self {
             typ: BodyType::Dynamic,
             pos: Real2::zero(),
             shape: Shape::default(),
             shape_flags: 0xffffffff,
             mass: Some(reali(1)),
             inertia: Some(reali(1)),
-            friction: Real::from(0.5),
-            restitution: Real::from(0.8),
+            friction: 0.5,
+            restitution: 0.8,
             max_penetration: reali(8),
         }
     }
 }
 
 impl Default for Shape {
-    fn default()->Self { Shape::Hollow }
+    fn default() -> Self {
+        Shape::Hollow
+    }
 }
 
-#[cfg_attr(feature="hash_support", derive(Hash))]
-#[cfg_attr(feature="serde_support", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "hash_support", derive(Hash))]
+#[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone)]
 pub struct Body {
     pos: Real2,
@@ -124,11 +127,11 @@ pub struct Body {
 
     shape: Shape,
     shape_flags: ShapeFlags,
-    owner: Option<BodyOwner>
+    owner: Option<BodyOwner>,
 }
 
-#[cfg_attr(feature="serde_support", derive(Serialize, Deserialize))]
-#[cfg_attr(feature="hash_support", derive(Hash))]
+#[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "hash_support", derive(Hash))]
 #[derive(Copy, Clone)]
 pub struct ContactPoint {
     pub position: Real2,
@@ -145,17 +148,17 @@ pub struct ContactPoint {
     bounce: Real,
 }
 
-#[cfg_attr(feature="serde_support", derive(Serialize, Deserialize))]
-#[cfg_attr(feature="hash_support", derive(Hash))]
+#[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "hash_support", derive(Hash))]
 #[derive(Clone)]
 pub struct PersistentContact {
     pub points: Vec<ContactPoint>,
     friction: Real,
-    restitution: Real
+    restitution: Real,
 }
 
-#[cfg_attr(feature="serde_support", derive(Serialize, Deserialize))]
-#[cfg_attr(feature="hash_support", derive(Hash))]
+#[cfg_attr(feature = "serde_support", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "hash_support", derive(Hash))]
 #[derive(Copy, Clone, PartialEq)]
 pub enum Shape {
     Hollow,
@@ -164,7 +167,7 @@ pub enum Shape {
 }
 
 impl PersistentContact {
-    pub fn total_impulse(&self)->Real {
+    pub fn total_impulse(&self) -> Real {
         let mut result = reali(0);
         for point in self.points.iter() {
             result += point.p_n
@@ -174,7 +177,7 @@ impl PersistentContact {
 }
 
 impl Shape {
-    pub fn radius(&self)->Real {
+    pub fn radius(&self) -> Real {
         match self {
             Shape::Circle(r) => *r,
             // FIXME: this should be defined from outside
@@ -183,37 +186,40 @@ impl Shape {
         }
     }
 
-    pub fn test_overlap<D: Fn(Real2)->Real>(
-            a_shape: Shape,
-            a_pos: Real2,
-            b_shape: Shape,
-            b_pos: Real2,
-            distance_func: &D)->bool {
+    pub fn test_overlap<D: Fn(Real2) -> Real>(
+        a_shape: Shape,
+        a_pos: Real2,
+        b_shape: Shape,
+        b_pos: Real2,
+        distance_func: &D,
+    ) -> bool {
         match (a_shape, b_shape, a_pos, b_pos) {
             (Shape::Circle(a_radius), Shape::Circle(b_radius), a_pos, b_pos) => {
                 let dist_square = (a_pos - b_pos).magnitude_squared();
                 let radius = a_radius + b_radius;
                 let radius_square = radius * radius;
                 dist_square < radius_square
-            },
+            }
             // circle-map coillision
-            (Shape::Circle(a_radius), Shape::Map, a_pos, _) | (Shape::Map, Shape::Circle(a_radius), _, a_pos) => {
+            (Shape::Circle(a_radius), Shape::Map, a_pos, _)
+            | (Shape::Map, Shape::Circle(a_radius), _, a_pos) => {
                 let d = distance_func(a_pos);
                 d < a_radius
-            },
+            }
             (Shape::Hollow, _, _, _) | (_, Shape::Hollow, _, _) => false,
-            _ => { panic!("missing collision pair") }
+            _ => panic!("missing collision pair"),
         }
     }
 
-    pub fn test_contacts<D: Fn(Real2)->Real, N: Fn(Real2)->Real2>(points: &mut Vec<ContactPoint>,
-            a_shape: Shape,
-            a_pos: Real2,
-            b_shape: Shape,
-            b_pos: Real2,
-            map_distance: &D,
-            map_normal: &N,
-            ) {
+    pub fn test_contacts<D: Fn(Real2) -> Real, N: Fn(Real2) -> Real2>(
+        points: &mut Vec<ContactPoint>,
+        a_shape: Shape,
+        a_pos: Real2,
+        b_shape: Shape,
+        b_pos: Real2,
+        map_distance: &D,
+        map_normal: &N,
+    ) {
         match (a_shape, b_shape, a_pos, b_pos) {
             (Shape::Circle(a_radius), Shape::Circle(b_radius), a_pos, b_pos) => {
                 let dist_square = (a_pos - b_pos).magnitude_squared();
@@ -224,32 +230,13 @@ impl Shape {
                     let separation = radius - dist;
                     let pos_delta = b_pos - a_pos;
                     let pos_delta_len = pos_delta.magnitude();
-                    let normal = if pos_delta_len > (0.0001) { pos_delta / pos_delta_len } else { Real2::from((reali(0), reali(-1))) };
+                    let normal = if pos_delta_len > (0.0001) {
+                        pos_delta / pos_delta_len
+                    } else {
+                        Real2::from((reali(0), reali(-1)))
+                    };
                     let position = (0.5) * (a_pos + normal * a_radius + b_pos + -normal * b_radius);
-                    points.push(ContactPoint{
-                        position,
-                        normal,
-                        separation,
-                        r1: Real2::zero(),
-                        r2: Real2::zero(),
-                        p_n: reali(0),
-                        p_n_b: reali(0),
-                        p_t: reali(0),
-                        mass_n: reali(0),
-                        mass_t: reali(0),
-                        bias: reali(0),
-                        bounce: reali(0),
-                    });
-                } 
-            },
-            // circle-map coillision
-            (Shape::Circle(a_radius), Shape::Map, a_pos, _) | (Shape::Map, Shape::Circle(a_radius), _, a_pos) => {
-                let contacts = find_circle_contacts(a_pos, a_radius, map_distance, map_normal);
-                for contact in contacts.into_iter() {
-                    let separation = (contact.0 - a_pos).magnitude() - a_radius;
-                    let normal = contact.1;
-                    let position = contact.0;
-                    points.push(ContactPoint{
+                    points.push(ContactPoint {
                         position,
                         normal,
                         separation,
@@ -264,18 +251,46 @@ impl Shape {
                         bounce: reali(0),
                     });
                 }
-            },
-            (Shape::Hollow, _, _, _) | (_, Shape::Hollow, _, _) => {},
-            _ => { panic!("missing collision pair") }
+            }
+            // circle-map coillision
+            (Shape::Circle(a_radius), Shape::Map, a_pos, _)
+            | (Shape::Map, Shape::Circle(a_radius), _, a_pos) => {
+                let contacts = find_circle_contacts(a_pos, a_radius, map_distance, map_normal);
+                for contact in contacts.into_iter() {
+                    let separation = (contact.0 - a_pos).magnitude() - a_radius;
+                    let normal = contact.1;
+                    let position = contact.0;
+                    points.push(ContactPoint {
+                        position,
+                        normal,
+                        separation,
+                        r1: Real2::zero(),
+                        r2: Real2::zero(),
+                        p_n: reali(0),
+                        p_n_b: reali(0),
+                        p_t: reali(0),
+                        mass_n: reali(0),
+                        mass_t: reali(0),
+                        bias: reali(0),
+                        bounce: reali(0),
+                    });
+                }
+            }
+            (Shape::Hollow, _, _, _) | (_, Shape::Hollow, _, _) => {}
+            _ => panic!("missing collision pair"),
         }
     }
 }
 
-fn cross(a: Real2, b: Real2)->Real { a.x * b.y - a.y * b.x }
-fn cross_scalar(s: Real, b: Real2)->Real2 { Real2::from((-s * b.y, s * b.x)) }
+fn cross(a: Real2, b: Real2) -> Real {
+    a.x * b.y - a.y * b.x
+}
+fn cross_scalar(s: Real, b: Real2) -> Real2 {
+    Real2::from((-s * b.y, s * b.x))
+}
 
 impl Body {
-    fn kinetic_energy(&self)->Real {
+    fn kinetic_energy(&self) -> Real {
         let mut r = Real::zero();
         if self.inv_mass != reali(0) {
             r += self.velocity.dot(self.velocity) / self.inv_mass;
@@ -288,7 +303,7 @@ impl Body {
 }
 
 impl World {
-    pub fn new()->Self {
+    pub fn new() -> Self {
         Self {
             bodies: slotmap::SlotMap::with_capacity_and_key(256),
             active_bodies: BTreeSet::new(),
@@ -299,7 +314,7 @@ impl World {
             island_nexts: slotmap::SecondaryMap::new(),
             island_prevs: slotmap::SecondaryMap::new(),
             sleeping_islands: BTreeSet::new(),
-            spatial_hash: SpatialHash{
+            spatial_hash: SpatialHash {
                 hash: FxHashMap::default(),
                 map_bodies: Vec::new(),
                 cell_size: reali(64),
@@ -308,7 +323,7 @@ impl World {
             bounce_velocity: reali(200),
             max_velocity: reali(4000),
             max_angular_velocity: reali(50),
-            collision_shape_flags: 0xffffffff
+            collision_shape_flags: 0xffffffff,
         }
     }
 
@@ -317,16 +332,22 @@ impl World {
     pub fn set_collision_shape_flags(&mut self, collision_shape_flags: ShapeFlags) {
         self.collision_shape_flags = collision_shape_flags;
     }
-    pub fn collision_shape_flags(&self)->ShapeFlags { self.collision_shape_flags }
+    pub fn collision_shape_flags(&self) -> ShapeFlags {
+        self.collision_shape_flags
+    }
 
     /// how long does it take for body to be inactive before it is put ot sleep
-    pub fn sleep_time_threshold(&self)->Real { Real::from(0.3) }
+    pub fn sleep_time_threshold(&self) -> Real {
+        0.3
+    }
     /// how slow body has to be put into sleep
-    pub fn sleep_velocity_threshold(&self)->Real { reali(25) }
+    pub fn sleep_velocity_threshold(&self) -> Real {
+        reali(25)
+    }
 
     /// add body to the simulation
-    pub fn add_body(&mut self, def: BodyDef)->BodyKey {
-        let k = self.bodies.insert(Body{
+    pub fn add_body(&mut self, def: BodyDef) -> BodyKey {
+        let k = self.bodies.insert(Body {
             typ: def.typ,
             pos: def.pos,
             shape: def.shape,
@@ -340,13 +361,20 @@ impl World {
             force: Real2::zero(),
             torque: reali(0),
             owner: None,
-            inv_mass: match def.mass { Some(m) => reali(1) / m, _ => reali(0) },
-            inv_inertia: match def.inertia { Some(i) => reali(1) / i, _ => reali(0) },
+            inv_mass: match def.mass {
+                Some(m) => reali(1) / m,
+                _ => reali(0),
+            },
+            inv_inertia: match def.inertia {
+                Some(i) => reali(1) / i,
+                _ => reali(0),
+            },
         });
         if def.typ == BodyType::Dynamic {
             self.active_bodies.insert(k);
         }
-        self.spatial_hash.register(def.pos, def.pos, def.shape, def.shape_flags, k);
+        self.spatial_hash
+            .register(def.pos, def.pos, def.shape, def.shape_flags, k);
         k
     }
 
@@ -377,15 +405,19 @@ impl World {
             }
             for (_, n) in &self.island_nexts {
                 if *n == k {
-                    eprintln!("body {:?} of {:?} is still next-connected with removed body {:?} of {:?}",
-                        *n, self.bodies[*n].owner, k, self.bodies[k].owner);
+                    eprintln!(
+                        "body {:?} of {:?} is still next-connected with removed body {:?} of {:?}",
+                        *n, self.bodies[*n].owner, k, self.bodies[k].owner
+                    );
                 }
                 assert!(*n != k);
             }
             for (_, n) in &self.island_prevs {
                 if *n == k {
-                    eprintln!("body {:?} of {:?} is still prev-connected with removed body {:?} of {:?}",
-                        *n, self.bodies[*n].owner, k, self.bodies[k].owner);
+                    eprintln!(
+                        "body {:?} of {:?} is still prev-connected with removed body {:?} of {:?}",
+                        *n, self.bodies[*n].owner, k, self.bodies[k].owner
+                    );
                 }
                 assert!(*n != k);
             }
@@ -410,11 +442,16 @@ impl World {
         }
     }
 
-    pub fn body_is_valid(&self, k: BodyKey)->bool {
-        match self.bodies.get(k) { Some(_) => true, _ => false }
+    pub fn body_is_valid(&self, k: BodyKey) -> bool {
+        match self.bodies.get(k) {
+            Some(_) => true,
+            _ => false,
+        }
     }
-    pub fn body_set_owner(&mut self, k: BodyKey, owner: Option<BodyOwner>) { self.bodies.get_mut(k).expect("body_set_owner").owner = owner; }
-    pub fn body_set_friction(&mut self, k: BodyKey, friction: Real) { 
+    pub fn body_set_owner(&mut self, k: BodyKey, owner: Option<BodyOwner>) {
+        self.bodies.get_mut(k).expect("body_set_owner").owner = owner;
+    }
+    pub fn body_set_friction(&mut self, k: BodyKey, friction: Real) {
         let body = self.bodies.get_mut(k).expect("body_set_friction");
         if body.friction != friction {
             body.friction = friction;
@@ -428,7 +465,7 @@ impl World {
             self.body_activate(k);
         }
     }
-    pub fn body_set_angular_velocity(&mut self, k: BodyKey, v: Real, activate: bool) { 
+    pub fn body_set_angular_velocity(&mut self, k: BodyKey, v: Real, activate: bool) {
         let body = self.bodies.get_mut(k).expect("body_set_angular_velocity");
         if body.angular_velocity != v {
             body.angular_velocity = v;
@@ -439,7 +476,10 @@ impl World {
     }
     pub fn body_set_inertia(&mut self, k: BodyKey, inertia: Option<Real>) {
         let body = self.bodies.get_mut(k).expect("body_set_inertia");
-        let inv_inertia = match inertia { Some(v) => reali(1) / v, _ => reali(0) };
+        let inv_inertia = match inertia {
+            Some(v) => reali(1) / v,
+            _ => reali(0),
+        };
         if body.inv_inertia != inv_inertia {
             body.inv_inertia = inv_inertia;
             self.body_activate(k);
@@ -480,70 +520,106 @@ impl World {
     pub fn body_set_position(&mut self, k: BodyKey, pos: Real2) {
         let body = self.bodies.get_mut(k).expect("body_set_position");
         if body.pos != pos {
-            self.spatial_hash.unregister(body.pos, body.pos, body.shape, k);
+            self.spatial_hash
+                .unregister(body.pos, body.pos, body.shape, k);
             body.pos = pos;
-            self.spatial_hash.register(pos, pos, body.shape, body.shape_flags, k);
+            self.spatial_hash
+                .register(pos, pos, body.shape, body.shape_flags, k);
             self.body_activate(k);
         }
     }
     pub fn body_set_shape(&mut self, k: BodyKey, shape: Shape) {
         let body = self.bodies.get_mut(k).expect("body_set_shape");
         if body.shape != shape {
-            self.spatial_hash.unregister(body.pos, body.pos, body.shape, k);
+            self.spatial_hash
+                .unregister(body.pos, body.pos, body.shape, k);
             body.shape = shape;
-            self.spatial_hash.register(body.pos, body.pos, body.shape, body.shape_flags, k);
+            self.spatial_hash
+                .register(body.pos, body.pos, body.shape, body.shape_flags, k);
             self.body_activate(k);
         }
     }
     pub fn body_set_shape_flags(&mut self, k: BodyKey, flags: ShapeFlags) {
         let body = self.bodies.get_mut(k).expect("body_set_shape");
         if body.shape_flags != flags {
-            self.spatial_hash.unregister(body.pos, body.pos, body.shape, k);
+            self.spatial_hash
+                .unregister(body.pos, body.pos, body.shape, k);
             body.shape_flags = flags;
-            self.spatial_hash.register(body.pos, body.pos, body.shape, body.shape_flags, k);
+            self.spatial_hash
+                .register(body.pos, body.pos, body.shape, body.shape_flags, k);
             self.body_activate(k);
         }
     }
-    pub fn body_shape_flags(&self, k: BodyKey)->ShapeFlags { self.bodies[k].shape_flags }
-    pub fn body_owner(&self, k: BodyKey)->Option<BodyOwner>    { self.bodies[k].owner }
-    pub fn body_type(&self, k: BodyKey)->BodyType              { self.bodies[k].typ }
-    pub fn body_shape(&self, k: BodyKey)->Shape                { self.bodies[k].shape }
-    pub fn body_position(&self, k: BodyKey)->Real2            { self.bodies[k].pos }
-    pub fn body_idle_time(&self, k: BodyKey)->Real            { self.idle_times.get(k).copied().unwrap_or(reali(-1)) }
-    pub fn body_velocity(&self, k: BodyKey)->Real2            { self.bodies[k].velocity }
-    pub fn body_angular_velocity(&self, k: BodyKey)->Real     { self.bodies[k].angular_velocity }
-    pub fn body_rotation(&self, k: BodyKey)->Real             { self.bodies[k].rotation }
-    pub fn body_inv_mass(&self, k: BodyKey)->Real             { self.bodies[k].inv_mass }
-    pub fn body_kinetic_energy(&self, k: BodyKey)->Real {
+    pub fn body_shape_flags(&self, k: BodyKey) -> ShapeFlags {
+        self.bodies[k].shape_flags
+    }
+    pub fn body_owner(&self, k: BodyKey) -> Option<BodyOwner> {
+        self.bodies[k].owner
+    }
+    pub fn body_type(&self, k: BodyKey) -> BodyType {
+        self.bodies[k].typ
+    }
+    pub fn body_shape(&self, k: BodyKey) -> Shape {
+        self.bodies[k].shape
+    }
+    pub fn body_position(&self, k: BodyKey) -> Real2 {
+        self.bodies[k].pos
+    }
+    pub fn body_idle_time(&self, k: BodyKey) -> Real {
+        self.idle_times.get(k).copied().unwrap_or(reali(-1))
+    }
+    pub fn body_velocity(&self, k: BodyKey) -> Real2 {
+        self.bodies[k].velocity
+    }
+    pub fn body_angular_velocity(&self, k: BodyKey) -> Real {
+        self.bodies[k].angular_velocity
+    }
+    pub fn body_rotation(&self, k: BodyKey) -> Real {
+        self.bodies[k].rotation
+    }
+    pub fn body_inv_mass(&self, k: BodyKey) -> Real {
+        self.bodies[k].inv_mass
+    }
+    pub fn body_kinetic_energy(&self, k: BodyKey) -> Real {
         let body: &Body = &self.bodies[k];
         body.kinetic_energy()
     }
 
-    pub fn body_is_sleeping(&self, k: BodyKey)->bool {
+    pub fn body_is_sleeping(&self, k: BodyKey) -> bool {
         assert!(self.bodies[k].typ == BodyType::Dynamic);
         let is_sleeping = self.island_roots.get(k).is_some();
         if is_sleeping {
-            assert!(self.active_bodies.contains(&k) == false);
+            assert!(!self.active_bodies.contains(&k));
         }
         is_sleeping
     }
 
-    pub fn visit_sleeping_island<F: FnMut(BodyKey, &mut Self)>(&mut self, root: BodyKey, func: &mut F) {
+    pub fn visit_sleeping_island<F: FnMut(BodyKey, &mut Self)>(
+        &mut self,
+        root: BodyKey,
+        func: &mut F,
+    ) {
         let mut cur = root;
         loop {
             let next = self.island_nexts.get(cur).copied();
             if self.island_roots.get(cur).copied() != Some(root) {
-                eprintln!("member of island {:?} ({:?}) has incorrect root {:?} instead of expected {:?}", cur, self.bodies[cur].owner, self.island_roots.get(cur), root);
+                eprintln!(
+                    "member of island {:?} ({:?}) has incorrect root {:?} instead of expected {:?}",
+                    cur,
+                    self.bodies[cur].owner,
+                    self.island_roots.get(cur),
+                    root
+                );
             }
             assert!(self.island_roots.get(cur).copied() == Some(root));
             func(cur, self);
             cur = match next {
                 Some(k) => k,
-                None => break
+                None => break,
             };
         }
     }
-    fn body_deactivate(&mut self, k: BodyKey)->Vec<(BodyKey, BodyKey, Real2)> {
+    fn body_deactivate(&mut self, k: BodyKey) -> Vec<(BodyKey, BodyKey, Real2)> {
         let body: &mut Body = self.bodies.get_mut(k).expect("body_sleep");
         assert!(body.typ == BodyType::Dynamic);
         // is this valid?
@@ -552,7 +628,17 @@ impl World {
 
         self.active_bodies.remove(&k);
 
-        let contacts_to_sleep: Vec<(BodyKey, BodyKey, Real2)> = self.persistent_contacts.iter().filter_map(|((k1, k2), v)| if *k1 == k || *k2 == k { Some((*k1, *k2, v.points[0].position)) } else { None }).collect();
+        let contacts_to_sleep: Vec<(BodyKey, BodyKey, Real2)> = self
+            .persistent_contacts
+            .iter()
+            .filter_map(|((k1, k2), v)| {
+                if *k1 == k || *k2 == k {
+                    Some((*k1, *k2, v.points[0].position))
+                } else {
+                    None
+                }
+            })
+            .collect();
         for &(k0, k1, _) in contacts_to_sleep.iter() {
             let contact = self.persistent_contacts.remove(&(k0, k1)).unwrap();
             self.sleeping_contacts.insert((k0, k1), contact);
@@ -564,7 +650,9 @@ impl World {
         Self::unlink_from_island(
             &mut self.island_roots,
             &mut self.island_nexts,
-            &mut self.island_prevs, k);
+            &mut self.island_prevs,
+            k,
+        );
         self.island_roots.insert(k, k);
         self.body_deactivate(k);
     }
@@ -581,13 +669,21 @@ impl World {
                     Self::unlink_from_island(
                         &mut w.island_roots,
                         &mut w.island_nexts,
-                        &mut w.island_prevs, k);
+                        &mut w.island_prevs,
+                        k,
+                    );
                     w.idle_times.insert(k, reali(0));
-                    let contacts_to_awake: Vec<_> = w.sleeping_contacts.keys().filter(|&(k1, k2)| *k1 == k || *k2 == k).copied().collect();
+                    let contacts_to_awake: Vec<_> = w
+                        .sleeping_contacts
+                        .keys()
+                        .filter(|&(k1, k2)| *k1 == k || *k2 == k)
+                        .copied()
+                        .collect();
                     for &c in contacts_to_awake.iter() {
                         assert!(w.bodies.get(c.0).is_some());
                         assert!(w.bodies.get(c.1).is_some());
-                        w.persistent_contacts.insert(c, w.sleeping_contacts.remove(&c).unwrap());
+                        w.persistent_contacts
+                            .insert(c, w.sleeping_contacts.remove(&c).unwrap());
                     }
                 });
             }
@@ -595,32 +691,34 @@ impl World {
         for (c_k, _) in &self.sleeping_contacts {
             if k == c_k.0 || k == c_k.1 {
                 let other = if k == c_k.0 { c_k.1 } else { c_k.0 };
-                eprintln!("body {:?} ({:?}) is still in sleeping contact with {:?} ({:?}", k, self.bodies[k].owner, other, self.bodies[other].owner)
+                eprintln!(
+                    "body {:?} ({:?}) is still in sleeping contact with {:?} ({:?}",
+                    k, self.bodies[k].owner, other, self.bodies[other].owner
+                )
             }
             assert!(k != c_k.0 && k != c_k.1)
         }
     }
 
-    pub fn bodies<'a>(&'a self)->impl Iterator<Item = BodyKey> + 'a {
+    pub fn bodies<'a>(&'a self) -> impl Iterator<Item = BodyKey> + 'a {
         self.bodies.keys()
     }
 
-    pub fn body_total_contact_impulse(&self, k: BodyKey)->Real {
+    pub fn body_total_contact_impulse(&self, k: BodyKey) -> Real {
         // find all contacts
         self.persistent_contacts
-            .iter().filter(|(p, _)| {
-                p.0 == k || p.1 == k
-            })
-            .map(|(_, c)| {
-                c.total_impulse()
-            })
+            .iter()
+            .filter(|(p, _)| p.0 == k || p.1 == k)
+            .map(|(_, c)| c.total_impulse())
             .fold(reali(0), |a, b| a + b)
     }
 
-    fn unlink_from_island(roots: &mut slotmap::SecondaryMap<BodyKey, BodyKey>, 
-                          nexts: &mut slotmap::SecondaryMap<BodyKey, BodyKey>,
-                          prevs: &mut slotmap::SecondaryMap<BodyKey, BodyKey>, 
-                          body: BodyKey) {
+    fn unlink_from_island(
+        roots: &mut slotmap::SecondaryMap<BodyKey, BodyKey>,
+        nexts: &mut slotmap::SecondaryMap<BodyKey, BodyKey>,
+        prevs: &mut slotmap::SecondaryMap<BodyKey, BodyKey>,
+        body: BodyKey,
+    ) {
         roots.remove(body);
         let body_next = nexts.remove(body);
         if let Some(prev) = prevs.remove(body) {
@@ -634,14 +732,14 @@ impl World {
     }
 
     pub fn flood_fill_island_r(
-        roots: &mut slotmap::SecondaryMap<BodyKey, BodyKey>, 
+        roots: &mut slotmap::SecondaryMap<BodyKey, BodyKey>,
         nexts: &mut slotmap::SecondaryMap<BodyKey, BodyKey>,
         prevs: &mut slotmap::SecondaryMap<BodyKey, BodyKey>,
         contacts: &BTreeMap<(BodyKey, BodyKey), PersistentContact>,
         root: BodyKey,
         body: BodyKey,
         bodies: &slotmap::SlotMap<BodyKey, Body>,
-        ) {
+    ) {
         assert!(bodies[body].typ == BodyType::Dynamic);
         if roots.get(body).is_some() {
             return;
@@ -665,16 +763,18 @@ impl World {
             if c.0 == body && bodies[c.1].typ == BodyType::Dynamic {
                 Self::flood_fill_island_r(roots, nexts, prevs, contacts, root, c.1, bodies);
             }
-            if c.1 == body && bodies[c.0].typ == BodyType::Dynamic  {
+            if c.1 == body && bodies[c.0].typ == BodyType::Dynamic {
                 Self::flood_fill_island_r(roots, nexts, prevs, contacts, root, c.0, bodies);
             }
         }
     }
 
-    fn is_island_active(k: BodyKey,
+    fn is_island_active(
+        k: BodyKey,
         nexts: &slotmap::SecondaryMap<BodyKey, BodyKey>,
         idle_times: &slotmap::SecondaryMap<BodyKey, Real>,
-        sleep_time_threshold: Real)->bool {
+        sleep_time_threshold: Real,
+    ) -> bool {
         let mut cur = k;
         loop {
             let idle_time = idle_times.get(cur).copied().unwrap_or(reali(0));
@@ -683,14 +783,21 @@ impl World {
             }
             cur = match nexts.get(cur) {
                 Some(next) => *next,
-                None => break
+                None => break,
             }
         }
         false
     }
 
     #[inline(never)]
-    pub fn simulate_physics<D: Fn(Real2)->Real, N: Fn(Real2)->Real2>(&mut self, map_distance: D, map_normal: N, dt: Real, started_contacts: &mut Vec<(BodyKey, BodyKey)>, finished_contacts: &mut Vec<(BodyKey, BodyKey, Real2)>) {
+    pub fn simulate_physics<D: Fn(Real2) -> Real, N: Fn(Real2) -> Real2>(
+        &mut self,
+        map_distance: D,
+        map_normal: N,
+        dt: Real,
+        started_contacts: &mut Vec<(BodyKey, BodyKey)>,
+        finished_contacts: &mut Vec<(BodyKey, BodyKey, Real2)>,
+    ) {
         if dt == reali(0) {
             return;
         }
@@ -700,7 +807,13 @@ impl World {
         let mut new_contacts = BTreeMap::new();
         for &a_k in self.active_bodies.iter() {
             let a = &self.bodies[a_k];
-            self.spatial_hash.find_neighbours(&mut neighbours, a.pos, a.pos, a.shape, a.shape_flags & self.collision_shape_flags);
+            self.spatial_hash.find_neighbours(
+                &mut neighbours,
+                a.pos,
+                a.pos,
+                a.shape,
+                a.shape_flags & self.collision_shape_flags,
+            );
             for &b_k in &neighbours {
                 if b_k == a_k {
                     continue;
@@ -710,7 +823,15 @@ impl World {
                 let a = &self.bodies[a_k];
                 let b = &self.bodies[b_k];
                 let mut points = Vec::new();
-                Shape::test_contacts(&mut points, a.shape, a.pos, b.shape, b.pos, &map_distance, &map_normal);
+                Shape::test_contacts(
+                    &mut points,
+                    a.shape,
+                    a.pos,
+                    b.shape,
+                    b.pos,
+                    &map_distance,
+                    &map_normal,
+                );
                 if !points.is_empty() {
                     let friction = (a.friction * b.friction).sqrt();
                     let restitution = a.restitution.max(b.restitution);
@@ -725,7 +846,7 @@ impl World {
                         None
                     };
                     match old_contact {
-                        Some(old_contact)=> {
+                        Some(old_contact) => {
                             for point in points.iter_mut() {
                                 let mut min_normal_diff = Real::MAX;
                                 let mut best_p = None;
@@ -747,11 +868,14 @@ impl World {
                         }
                         None => {}
                     }
-                    new_contacts.insert(key, PersistentContact {
-                        points,
-                        friction,
-                        restitution
-                    });
+                    new_contacts.insert(
+                        key,
+                        PersistentContact {
+                            points,
+                            friction,
+                            restitution,
+                        },
+                    );
                 }
             }
         }
@@ -781,7 +905,7 @@ impl World {
                     }
                 }
             }
-            
+
             // awake sleeping bodies that got contacts
             let mut bodies_to_awake = Vec::new();
             for &k in self.persistent_contacts.keys() {
@@ -799,9 +923,12 @@ impl World {
             }
 
             for &k in self.active_bodies.iter() {
-                Self::unlink_from_island(&mut self.island_roots,
-                                         &mut self.island_nexts,
-                                         &mut self.island_prevs, k);
+                Self::unlink_from_island(
+                    &mut self.island_roots,
+                    &mut self.island_nexts,
+                    &mut self.island_prevs,
+                    k,
+                );
             }
 
             let mut islands_to_deactivate = Vec::new();
@@ -809,9 +936,22 @@ impl World {
             let mut active_bodies: Vec<_> = self.active_bodies.iter().copied().collect();
             while let Some(k) = active_bodies.pop() {
                 if self.island_roots.get(k).is_none() {
-                    Self::flood_fill_island_r(&mut self.island_roots, &mut self.island_nexts, &mut self.island_prevs, &self.persistent_contacts, k, k, &self.bodies);
+                    Self::flood_fill_island_r(
+                        &mut self.island_roots,
+                        &mut self.island_nexts,
+                        &mut self.island_prevs,
+                        &self.persistent_contacts,
+                        k,
+                        k,
+                        &self.bodies,
+                    );
 
-                    if !Self::is_island_active(k, &self.island_nexts, &self.idle_times, sleep_time_threshold) {
+                    if !Self::is_island_active(
+                        k,
+                        &self.island_nexts,
+                        &self.idle_times,
+                        sleep_time_threshold,
+                    ) {
                         // deactivate complete island
                         islands_to_deactivate.push(k);
 
@@ -823,9 +963,12 @@ impl World {
                     }
                 }
 
-                Self::unlink_from_island(&mut self.island_roots,
-                                         &mut self.island_nexts,
-                                         &mut self.island_prevs, k);
+                Self::unlink_from_island(
+                    &mut self.island_roots,
+                    &mut self.island_nexts,
+                    &mut self.island_prevs,
+                    k,
+                );
             }
 
             for k in islands_to_deactivate.into_iter() {
@@ -842,15 +985,18 @@ impl World {
         // update velocities
         for &k in self.active_bodies.iter() {
             let a = self.bodies.get_mut(k).expect("missing k");
-            a.velocity = a.velocity + dt * a.force * a.inv_mass;
-            a.angular_velocity = a.angular_velocity + dt * a.inv_inertia * a.torque;
+            a.velocity += dt * a.force * a.inv_mass;
+            a.angular_velocity += dt * a.inv_inertia * a.torque;
             // clamp velocity
             let velocity_mag = a.velocity.magnitude();
             if velocity_mag > self.max_velocity {
                 a.velocity = a.velocity * self.max_velocity / velocity_mag;
             }
             // clamp angular velocity
-            a.angular_velocity = a.angular_velocity.max(-self.max_angular_velocity).min(self.max_angular_velocity);
+            a.angular_velocity = a
+                .angular_velocity
+                .max(-self.max_angular_velocity)
+                .min(self.max_angular_velocity);
         }
 
         // apply normal and friction impulses
@@ -867,9 +1013,10 @@ impl World {
                 let r2 = point.position - b.pos;
                 let rn1 = r1.dot(point.normal);
                 let rn2 = r2.dot(point.normal);
-                let k_normal = a.inv_mass + b.inv_mass +
-                    (r1.dot(r1) - rn1 * rn1) * a.inv_inertia + 
-                    (r2.dot(r2) - rn2 * rn2) * b.inv_inertia;
+                let k_normal = a.inv_mass
+                    + b.inv_mass
+                    + (r1.dot(r1) - rn1 * rn1) * a.inv_inertia
+                    + (r2.dot(r2) - rn2 * rn2) * b.inv_inertia;
                 assert!(k_normal.abs() > reali(0));
                 point.mass_n = reali(1) / k_normal;
                 //assert!(point.mass_n.is_finite());
@@ -877,18 +1024,22 @@ impl World {
                 let tangent = Real2::from((point.normal.y, -point.normal.x));
                 let rt1 = r1.dot(tangent);
                 let rt2 = r2.dot(tangent);
-                let k_tangent = a.inv_mass + b.inv_mass +
-                    (r1.dot(r1) - rt1 * rt1) * a.inv_inertia + 
-                    (r2.dot(r2) - rt2 * rt2) * b.inv_inertia;
+                let k_tangent = a.inv_mass
+                    + b.inv_mass
+                    + (r1.dot(r1) - rt1 * rt1) * a.inv_inertia
+                    + (r2.dot(r2) - rt2 * rt2) * b.inv_inertia;
                 assert!(k_tangent.abs() > reali(0));
                 point.mass_t = reali(1) / k_tangent;
                 //assert!(point.mass_t.is_finite());
-                let k_bias_factor = Real::from(0.2);
-                let k_allowed_penetration = Real::from(0.3);
-                point.bias = -k_bias_factor * inv_dt * (point.separation + k_allowed_penetration).min(reali(0));
+                let k_bias_factor = 0.2;
+                let k_allowed_penetration = 0.3;
+                point.bias = -k_bias_factor
+                    * inv_dt
+                    * (point.separation + k_allowed_penetration).min(reali(0));
 
-                let relative_velocity = b_velocity + cross_scalar(b_angular_velocity, point.r2) - 
-                                        a_velocity - cross_scalar(a_angular_velocity, point.r1);
+                let relative_velocity = b_velocity + cross_scalar(b_angular_velocity, point.r2)
+                    - a_velocity
+                    - cross_scalar(a_angular_velocity, point.r1);
                 let relative_velocity_n = relative_velocity.dot(point.normal);
                 point.bounce = if relative_velocity_n < -self.bounce_velocity {
                     -relative_velocity_n * contact.restitution
@@ -896,7 +1047,8 @@ impl World {
                     reali(0)
                 };
 
-                { // accumulate impulses
+                {
+                    // accumulate impulses
                     let p = point.p_n * point.normal + point.p_t * tangent;
                     a_velocity -= p * a.inv_mass;
                     b_velocity += p * b.inv_mass;
@@ -940,8 +1092,9 @@ impl World {
                     point.r2 = point.position - b.pos;
 
                     // relative velocity at point
-                    let relative_velocity = b_velocity + cross_scalar(b_angular_velocity, point.r2) - 
-                        a_velocity - cross_scalar(a_angular_velocity, point.r1);
+                    let relative_velocity = b_velocity + cross_scalar(b_angular_velocity, point.r2)
+                        - a_velocity
+                        - cross_scalar(a_angular_velocity, point.r1);
 
                     let normal_impulse = relative_velocity.dot(point.normal);
                     let mut dpn = point.mass_n * (-normal_impulse + point.bias + point.bounce);
@@ -951,10 +1104,10 @@ impl World {
                         point.p_n = (pn0 + dpn).max(reali(0));
                         dpn = point.p_n - pn0;
                     } /*
-                         else {
-                         dpn = dpn.max(0.0);
-                         }
-                         */
+                      else {
+                      dpn = dpn.max(0.0);
+                      }
+                      */
                     if dpn != reali(0) || relative_velocity != Real2::zero() {
                         //println!("dpn: {} relative velocity: {},{}", dpn, relative_velocity.x, relative_velocity.y);
                     }
@@ -966,13 +1119,14 @@ impl World {
                     a_angular_velocity -= cross(point.r1, pn) * a.inv_inertia;
                     b_angular_velocity += cross(point.r2, pn) * b.inv_inertia;
 
-                    let relative_velocity = b_velocity + cross_scalar(b_angular_velocity, point.r2) - 
-                        a_velocity - cross_scalar(a_angular_velocity, point.r1);
+                    let relative_velocity = b_velocity + cross_scalar(b_angular_velocity, point.r2)
+                        - a_velocity
+                        - cross_scalar(a_angular_velocity, point.r1);
                     let tangent = Real2::from((point.normal.y, -point.normal.x));
                     let tangent_impulse = relative_velocity.dot(tangent);
                     let mut dpt = point.mass_t * -tangent_impulse;
 
-                    // accumulate impulses 
+                    // accumulate impulses
                     {
                         let max_pt = contact.friction * point.p_n;
 
@@ -981,9 +1135,9 @@ impl World {
                         dpt = point.p_t - old_tangent_impulse;
                     }
                     /* else {
-                       let max_pt = friction * dPn
-                       dpt = dpt.max(-max_pt).min(max_pt);
-                       } */
+                    let max_pt = friction * dPn
+                    dpt = dpt.max(-max_pt).min(max_pt);
+                    } */
 
                     // apply point tangent impulse
                     let pt = dpt * tangent;
@@ -1009,16 +1163,29 @@ impl World {
         }
     }
 
-    pub fn update_positions<D: Fn(Real2)->Real>(&mut self, dt: Real, map_distance: &D) {
+    pub fn update_positions<D: Fn(Real2) -> Real>(&mut self, dt: Real, map_distance: &D) {
         for (a_k, a) in self.bodies.iter_mut() {
             if a.inv_mass != reali(0) {
                 //assert!(a.velocity.x.is_finite() && a.velocity.y.is_finite());
                 let new_pos = a.pos + a.velocity * dt;
                 //assert!(new_pos.x.is_finite() && new_pos.y.is_finite());
                 let max_penetration = a.max_penetration;
-                let (new_pos, _hit) = march_circle(a.pos, new_pos, (a.shape.radius() - max_penetration).max(reali(0)), &map_distance);
+                let (new_pos, _hit) = march_circle(
+                    a.pos,
+                    new_pos,
+                    (a.shape.radius() - max_penetration).max(reali(0)),
+                    &map_distance,
+                );
                 if a.pos != new_pos {
-                    self.spatial_hash.update(a.pos, a.pos, new_pos, new_pos, a.shape, a.shape_flags, a_k);
+                    self.spatial_hash.update(
+                        a.pos,
+                        a.pos,
+                        new_pos,
+                        new_pos,
+                        a.shape,
+                        a.shape_flags,
+                        a_k,
+                    );
                     a.pos = new_pos;
                 }
                 a.rotation += a.angular_velocity * dt;
@@ -1028,9 +1195,21 @@ impl World {
         }
     }
 
-    pub fn sample_distance(&self, pos: Real2, ignore_k: BodyKey, mask: ShapeFlags, sdf_upper_bound: Real)->Real {
+    pub fn sample_distance(
+        &self,
+        pos: Real2,
+        ignore_k: BodyKey,
+        mask: ShapeFlags,
+        sdf_upper_bound: Real,
+    ) -> Real {
         let mut bodies = Vec::new();
-        self.spatial_hash.find_neighbours(&mut bodies, pos, pos, Shape::Circle(sdf_upper_bound), mask);
+        self.spatial_hash.find_neighbours(
+            &mut bodies,
+            pos,
+            pos,
+            Shape::Circle(sdf_upper_bound),
+            mask,
+        );
         let mut result = sdf_upper_bound;
         for &k in bodies.iter() {
             if k == ignore_k {
@@ -1041,16 +1220,27 @@ impl World {
                 Shape::Circle(r) => {
                     result = result.min(sd_circle(pos, body.pos, r));
                 }
-                _ => {
-                }
+                _ => {}
             }
         }
         result
     }
 
-    pub fn sample_normal(&self, pos: Real2, ignore_k: BodyKey, mask: ShapeFlags, sdf_upper_bound: Real)->(Real, Real2) {
+    pub fn sample_normal(
+        &self,
+        pos: Real2,
+        ignore_k: BodyKey,
+        mask: ShapeFlags,
+        sdf_upper_bound: Real,
+    ) -> (Real, Real2) {
         let mut bodies = Vec::new();
-        self.spatial_hash.find_neighbours(&mut bodies, pos, pos, Shape::Circle(sdf_upper_bound), mask);
+        self.spatial_hash.find_neighbours(
+            &mut bodies,
+            pos,
+            pos,
+            Shape::Circle(sdf_upper_bound),
+            mask,
+        );
         let distance_func = |p| {
             let mut result = sdf_upper_bound;
             for &k in bodies.iter() {
@@ -1062,15 +1252,16 @@ impl World {
                     Shape::Circle(r) => {
                         result = result.min(sd_circle(p, body.pos, r));
                     }
-                    _ => {
-                    }
+                    _ => {}
                 }
             }
             result
         };
         let c = distance_func(pos);
-        let grad = Real2::from((distance_func(pos + Real2::from((reali(1), reali(0)))) - c,
-                                distance_func(pos + Real2::from((reali(0), reali(1)))) - c));
+        let grad = Real2::from((
+            distance_func(pos + Real2::from((reali(1), reali(0)))) - c,
+            distance_func(pos + Real2::from((reali(0), reali(1)))) - c,
+        ));
         let n = if grad.magnitude_squared() > (0.00001) {
             grad.normalized()
         } else {
@@ -1079,13 +1270,19 @@ impl World {
         (c, n)
     }
 
-
-    pub fn find_exact<D: Fn(Real2)->Real>(&self, result: &mut Vec<BodyKey>, position: Real2, shape: Shape, mask: ShapeFlags, distance_func: &D) {
-        self.spatial_hash.find_neighbours(result, position, position, shape, mask);
+    pub fn find_exact<D: Fn(Real2) -> Real>(
+        &self,
+        result: &mut Vec<BodyKey>,
+        position: Real2,
+        shape: Shape,
+        mask: ShapeFlags,
+        distance_func: &D,
+    ) {
+        self.spatial_hash
+            .find_neighbours(result, position, position, shape, mask);
         result.retain(|k| {
             let b = &self.bodies[*k];
             Shape::test_overlap(b.shape, b.pos, shape, position, distance_func)
         });
     }
-
 }

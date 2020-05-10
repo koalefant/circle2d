@@ -1,10 +1,15 @@
 use crate::*;
 
-pub fn sd_circle(p: Real2, center: Real2, r: Real)->Real {
+pub fn sd_circle(p: Real2, center: Real2, r: Real) -> Real {
     (p - center).magnitude() - r
 }
 
-pub fn march_circle<F: Fn(Real2)->Real>(start: Real2, end: Real2, radius: Real, distance_func: F)->(Real2, bool) {
+pub fn march_circle<F: Fn(Real2) -> Real>(
+    start: Real2,
+    end: Real2,
+    radius: Real,
+    distance_func: F,
+) -> (Real2, bool) {
     let delta = end - start;
     let max_length = delta.magnitude();
     //assert!(max_length.is_finite());
@@ -24,7 +29,7 @@ pub fn march_circle<F: Fn(Real2)->Real>(start: Real2, end: Real2, radius: Real, 
     let mut l = reali(0);
     let mut hit = false;
     let forward_step = reali(1);
-    let backward_step = Real::from(0.125);
+    let backward_step = 0.125;
     loop {
         let point = start + dir * l;
         let d = distance_func(point);
@@ -48,10 +53,10 @@ pub fn march_circle<F: Fn(Real2)->Real>(start: Real2, end: Real2, radius: Real, 
         let d = distance_func(point) - radius;
         if d >= reali(0) {
             if b == max_length {
-                return (end, hit)
+                return (end, hit);
             } else {
                 let result = start + dir * b;
-                assert!(hit == true || result == end);
+                assert!(hit || result == end);
                 return (result, hit);
             }
         } else {
@@ -59,11 +64,16 @@ pub fn march_circle<F: Fn(Real2)->Real>(start: Real2, end: Real2, radius: Real, 
         }
         b -= d.max(backward_step);
     }
-    assert!(hit == true || start == end);
-    return (start, hit);
+    assert!(hit || start == end);
+    (start, hit)
 }
 
-pub fn march_inflate<F: Fn(Real2)->Real>(start: Real2, end: Real2, end_r: Real, distance_func: F)->(Real2, Real) {
+pub fn march_inflate<F: Fn(Real2) -> Real>(
+    start: Real2,
+    end: Real2,
+    end_r: Real,
+    distance_func: F,
+) -> (Real2, Real) {
     let delta = end - start;
     let inv_end_r = reali(1) / end_r;
     let mut t = reali(0);
@@ -72,24 +82,28 @@ pub fn march_inflate<F: Fn(Real2)->Real>(start: Real2, end: Real2, end_r: Real, 
         let d = distance_func(point);
         t = (t + d.min(reali(1)) * inv_end_r).min(reali(1));
         if d < t * end_r {
-            return (point, d)
+            return (point, d);
         }
         if t >= reali(1) {
-            return (end, d)
+            return (end, d);
         }
     }
-
 }
 
-pub fn find_circle_contacts<F: Fn(Real2)->Real, N: Fn(Real2)->Real2>(center: Real2, radius: Real, distance_func: F, normal_func: N)->Vec<(Real2, Real2)> {
+pub fn find_circle_contacts<F: Fn(Real2) -> Real, N: Fn(Real2) -> Real2>(
+    center: Real2,
+    radius: Real,
+    distance_func: F,
+    normal_func: N,
+) -> Vec<(Real2, Real2)> {
     let mut points = Vec::new();
     let d = distance_func(center);
-    let pi = Real::from(3.1415926);
+    let pi = 3.141_592_5;
     if d <= radius {
         let n = normal_func(center);
         points.push((center + n * -d, n));
 
-        if d > reali(0) && d < radius - Real::from(0.5) {
+        if d > reali(0) && d < radius - 0.5 {
             let num_divs = 32;
             let subsample_r = reali(8);
             for div in 0..num_divs {
@@ -108,8 +122,11 @@ pub fn find_circle_contacts<F: Fn(Real2)->Real, N: Fn(Real2)->Real2>(center: Rea
                 }
             }
 
-            let mut grouped_normals: Vec<_> = points.iter().map(|(_, n)| (Real2::from((reali(0), reali(0))), *n, 0)).collect();
-            let compare_dist = Real::from(0.05);
+            let mut grouped_normals: Vec<_> = points
+                .iter()
+                .map(|(_, n)| (Real2::from((reali(0), reali(0))), *n, 0))
+                .collect();
+            let compare_dist = 0.05;
             let compare_dist_sq = compare_dist * compare_dist;
             for i in 0..points.len() {
                 for j in 0..points.len() {
@@ -124,7 +141,10 @@ pub fn find_circle_contacts<F: Fn(Real2)->Real, N: Fn(Real2)->Real2>(center: Rea
                     }
                 }
             }
-            points = grouped_normals.into_iter().filter_map(|(p, n, c)| if c > 0 { Some((p, n)) } else { None }).collect();
+            points = grouped_normals
+                .into_iter()
+                .filter_map(|(p, n, c)| if c > 0 { Some((p, n)) } else { None })
+                .collect();
         }
     }
     points
