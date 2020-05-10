@@ -72,7 +72,7 @@ jobs:
         run: |
           mkdir www
           cp target/wasm32-unknown-unknown/release/examples/*.wasm www
-          cp examples/*.html www
+          cp examples/*.html examples/*.js www
 
       - name: deploy to github pages
         uses: s0/git-publish-subdir-action@master
