@@ -1,0 +1,22 @@
+[package]
+name = "circle2d"
+version = "0.1.0"
+authors = ["koalefant <mandarin.cake@gmail.com>"]
+edition = "2018"
+
+[features]
+default = []
+serde_support = ["serde_derive", "serde"]
+# hashing is disabled by default as it is not implemented for floating point types
+hash_support = []
+
+[dependencies]
+num-traits = "*"
+vek = "*"
+slotmap = "*"
+rustc-hash = "*"
+serde_derive = { version="*", optional=true }
+serde = { version="*", optional=true }
+
+[dev-dependencies]
+miniquad = "0.3.0-alpha.0"
