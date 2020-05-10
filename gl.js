@@ -851,6 +851,7 @@ var importObject = {
                 var relative_position = mouse_relative_position(event.clientX, event.clientY);
                 var x = relative_position.x;
                 var y = relative_position.y;
+				event.preventDefault();
 
                 var btn = into_sapp_mousebutton(event.button);
                 wasm_exports.mouse_up(x, y, btn);
