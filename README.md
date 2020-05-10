@@ -2,6 +2,8 @@
 
 Circle2D is a little physics library used for my game [CrateBeforeAttack](https://CrateBeforeAttack.com).
 
+Live demo: https://koalefant.github.io/circle2d/
+
 ![Demo Screenshot](screenshot.png)
 
 It is not production ready, supports only circular shapes and distance fields.
