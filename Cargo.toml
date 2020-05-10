@@ -11,12 +11,12 @@ serde_support = ["serde_derive", "serde"]
 hash_support = []
 
 [dependencies]
-num-traits = "*"
-vek = "*"
-slotmap = "*"
-rustc-hash = "*"
-serde_derive = { version="*", optional=true }
-serde = { version="*", optional=true }
+num-traits = "0.2.11"
+vek = "0.10.4"
+slotmap = "0.4.0"
+rustc-hash = "1.1.0"
+serde_derive = { version = "1.0.110", optional = true }
+serde = { version = "1.0.110", optional = true }
 
 [dev-dependencies]
 miniquad = "0.3.0-alpha.0"
