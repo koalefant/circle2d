@@ -689,8 +689,9 @@ fn sd_terrain(p: Vec2) -> f32 {
 impl EventHandler for Stage {
     fn update(&mut self, _ctx: &mut Context) {
         let time = miniquad::date::now();
-        let mut remaining_dt = time - self.last_frame;
         let time_step = 0.016;
+        // do not simulate more than 3 frames
+        let mut remaining_dt = (time - self.last_frame).min(time_step * 3.0);
         let distance_func = |p: Vec2| sd_terrain(p);
         let normal_func = |p: Vec2| -> Vec2 {
             let samples = [
