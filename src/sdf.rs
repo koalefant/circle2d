@@ -1,7 +1,7 @@
 use crate::*;
 
 pub fn sd_circle(p: Real2, center: Real2, r: Real) -> Real {
-    (p - center).magnitude() - r
+    (p - center).length() - r
 }
 
 pub fn march_circle<F: Fn(Real2) -> Real>(
@@ -11,7 +11,7 @@ pub fn march_circle<F: Fn(Real2) -> Real>(
     distance_func: F,
 ) -> (Real2, bool) {
     let delta = end - start;
-    let max_length = delta.magnitude();
+    let max_length = delta.length();
     //assert!(max_length.is_finite());
     let start_d = distance_func(start);
     if start_d < reali(0) {
@@ -29,7 +29,7 @@ pub fn march_circle<F: Fn(Real2) -> Real>(
     let mut l = reali(0);
     let mut hit = false;
     let forward_step = reali(1);
-    let backward_step = 0.125;
+    let backward_step = realf(0.125);
     loop {
         let point = start + dir * l;
         let d = distance_func(point);
@@ -98,17 +98,17 @@ pub fn find_circle_contacts<F: Fn(Real2) -> Real, N: Fn(Real2) -> Real2>(
 ) -> Vec<(Real2, Real2)> {
     let mut points = Vec::new();
     let d = distance_func(center);
-    let pi = 3.141_592_5;
+    let pi = realf(3.141_592_5);
     if d <= radius {
         let n = normal_func(center);
         points.push((center + n * -d, n));
 
-        if d > reali(0) && d < radius - 0.5 {
+        if d > reali(0) && d < radius - realf(0.5) {
             let num_divs = 32;
             let subsample_r = reali(8);
             for div in 0..num_divs {
                 let angle = pi * reali(2 * div) / reali(num_divs);
-                let offset = Real2::from((angle.cos(), angle.sin()));
+                let offset = Real2::new(angle.cos(), angle.sin());
                 let subsample = center + offset * subsample_r;
                 let (tp, d) = march_inflate(center, subsample, subsample_r, &distance_func);
                 let n = normal_func(tp);
@@ -124,15 +124,15 @@ pub fn find_circle_contacts<F: Fn(Real2) -> Real, N: Fn(Real2) -> Real2>(
 
             let mut grouped_normals: Vec<_> = points
                 .iter()
-                .map(|(_, n)| (Real2::from((reali(0), reali(0))), *n, 0))
+                .map(|(_, n)| (Real2::new(reali(0), reali(0)), *n, 0))
                 .collect();
-            let compare_dist = 0.05;
+            let compare_dist = realf(0.05);
             let compare_dist_sq = compare_dist * compare_dist;
             for i in 0..points.len() {
                 for j in 0..points.len() {
-                    if (points[i].1 - points[j].1).magnitude_squared() <= compare_dist_sq {
-                        let current_dist_sq = (grouped_normals[j].0 - center).magnitude_squared();
-                        let new_dist_sq = (points[i].0 - center).magnitude_squared();
+                    if (points[i].1 - points[j].1).length_squared() <= compare_dist_sq {
+                        let current_dist_sq = (grouped_normals[j].0 - center).length_squared();
+                        let new_dist_sq = (points[i].0 - center).length_squared();
                         if new_dist_sq < current_dist_sq {
                             grouped_normals[j].0 = points[i].0;
                         }

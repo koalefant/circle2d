@@ -5,14 +5,16 @@ authors = ["koalefant <mandarin.cake@gmail.com>"]
 edition = "2018"
 
 [features]
-default = []
 serde_support = ["serde_derive", "serde"]
 # hashing is disabled by default as it is not implemented for floating point types
 hash_support = []
+fixed_point = []
+
+default = []
 
 [dependencies]
 num-traits = "0.2.11"
-vek = "0.10.4"
+glam = "0.9.5"
 slotmap = "0.4.0"
 rustc-hash = "1.1.0"
 serde_derive = { version = "1.0.110", optional = true }

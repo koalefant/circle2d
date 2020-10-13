@@ -115,14 +115,23 @@ impl SpatialHash {
     }
 
     fn grid_range(&self, from: Real2, to: Real2, r: Real) -> ((i32, i32), (i32, i32)) {
-        let pos_min = from - Real2::from((r, r));
-        let pos_max = to + Real2::from((r, r));
+        let pos_min = from - Real2::new(r, r);
+        let pos_max = to + Real2::new(r, r);
         let pos_min = cell_div2(pos_min, self.cell_size, self.inv_cell_size);
         let pos_max = cell_div2(pos_max, self.cell_size, self.inv_cell_size);
-        let start = pos_min.map(|v| v.floor());
-        let start = (start.x as i32, start.y as i32);
-        let end = pos_max.map(|v| v.floor());
-        let end = (end.x as i32, end.y as i32);
+
+        let start = pos_min.floor();
+        #[cfg(feature = "fixed_point")]
+        let start: (i32, i32) = start.into();
+        #[cfg(not(feature = "fixed_point"))]
+        let start: (i32, i32) = (start.x() as i32, start.y() as i32);
+
+        let end = pos_max.floor();
+        #[cfg(feature = "fixed_point")]
+        let end: (i32, i32) = end.into();
+        #[cfg(not(feature = "fixed_point"))]
+        let end: (i32, i32) = (end.x() as i32, end.y() as i32);
+
         let (start, end) = (
             (start.0.min(end.0), start.1.min(end.1)),
             (start.0.max(end.0) + 1, start.1.max(end.1) + 1),
@@ -140,5 +149,5 @@ fn cell_div(x: Real, v: Real, inv_v: Real) -> Real {
 }
 
 fn cell_div2(x: Real2, v: Real, inv_v: Real) -> Real2 {
-    Real2::from((cell_div(x.x, v, inv_v), cell_div(x.y, v, inv_v)))
+    Real2::new(cell_div(x.x(), v, inv_v), cell_div(x.y(), v, inv_v))
 }

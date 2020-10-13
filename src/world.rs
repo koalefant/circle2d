@@ -92,8 +92,8 @@ impl Default for BodyDef {
             shape_flags: 0xffffffff,
             mass: Some(reali(1)),
             inertia: Some(reali(1)),
-            friction: 0.5,
-            restitution: 0.8,
+            friction: realf(0.5),
+            restitution: realf(0.8),
             max_penetration: reali(8),
         }
     }
@@ -195,7 +195,7 @@ impl Shape {
     ) -> bool {
         match (a_shape, b_shape, a_pos, b_pos) {
             (Shape::Circle(a_radius), Shape::Circle(b_radius), a_pos, b_pos) => {
-                let dist_square = (a_pos - b_pos).magnitude_squared();
+                let dist_square = (a_pos - b_pos).length_squared();
                 let radius = a_radius + b_radius;
                 let radius_square = radius * radius;
                 dist_square < radius_square
@@ -222,20 +222,20 @@ impl Shape {
     ) {
         match (a_shape, b_shape, a_pos, b_pos) {
             (Shape::Circle(a_radius), Shape::Circle(b_radius), a_pos, b_pos) => {
-                let dist_square = (a_pos - b_pos).magnitude_squared();
+                let dist_square = (a_pos - b_pos).length_squared();
                 let radius = a_radius + b_radius;
                 let radius_square = radius * radius;
                 if dist_square < radius_square {
                     let dist = dist_square.sqrt();
                     let separation = radius - dist;
                     let pos_delta = b_pos - a_pos;
-                    let pos_delta_len = pos_delta.magnitude();
-                    let normal = if pos_delta_len > (0.0001) {
+                    let pos_delta_len = pos_delta.length();
+                    let normal = if pos_delta_len > realf(0.0001) {
                         pos_delta / pos_delta_len
                     } else {
-                        Real2::from((reali(0), reali(-1)))
+                        Real2::new(reali(0), reali(-1))
                     };
-                    let position = (0.5) * (a_pos + normal * a_radius + b_pos + -normal * b_radius);
+                    let position = realf(0.5) * (a_pos + normal * a_radius + b_pos + -normal * b_radius);
                     points.push(ContactPoint {
                         position,
                         normal,
@@ -257,7 +257,7 @@ impl Shape {
             | (Shape::Map, Shape::Circle(a_radius), _, a_pos) => {
                 let contacts = find_circle_contacts(a_pos, a_radius, map_distance, map_normal);
                 for contact in contacts.into_iter() {
-                    let separation = (contact.0 - a_pos).magnitude() - a_radius;
+                    let separation = (contact.0 - a_pos).length() - a_radius;
                     let normal = contact.1;
                     let position = contact.0;
                     points.push(ContactPoint {
@@ -283,10 +283,10 @@ impl Shape {
 }
 
 fn cross(a: Real2, b: Real2) -> Real {
-    a.x * b.y - a.y * b.x
+    a.x() * b.y() - a.y() * b.x()
 }
 fn cross_scalar(s: Real, b: Real2) -> Real2 {
-    Real2::from((-s * b.y, s * b.x))
+    Real2::new(-s * b.y(), s * b.x())
 }
 
 impl Body {
@@ -338,7 +338,7 @@ impl World {
 
     /// how long does it take for body to be inactive before it is put ot sleep
     pub fn sleep_time_threshold(&self) -> Real {
-        0.3
+        realf(0.3)
     }
     /// how slow body has to be put into sleep
     pub fn sleep_velocity_threshold(&self) -> Real {
@@ -851,8 +851,8 @@ impl World {
                                 let mut min_normal_diff = Real::MAX;
                                 let mut best_p = None;
                                 for (i_p, p) in old_contact.points.iter().enumerate() {
-                                    let diff = (point.normal - p.normal).magnitude();
-                                    if diff < (0.3) && diff < min_normal_diff {
+                                    let diff = (point.normal - p.normal).length();
+                                    if diff < realf(0.3) && diff < min_normal_diff {
                                         min_normal_diff = diff;
                                         best_p = Some(i_p);
                                     }
@@ -988,7 +988,7 @@ impl World {
             a.velocity += dt * a.force * a.inv_mass;
             a.angular_velocity += dt * a.inv_inertia * a.torque;
             // clamp velocity
-            let velocity_mag = a.velocity.magnitude();
+            let velocity_mag = a.velocity.length();
             if velocity_mag > self.max_velocity {
                 a.velocity = a.velocity * self.max_velocity / velocity_mag;
             }
@@ -1021,7 +1021,7 @@ impl World {
                 point.mass_n = reali(1) / k_normal;
                 //assert!(point.mass_n.is_finite());
 
-                let tangent = Real2::from((point.normal.y, -point.normal.x));
+                let tangent = Real2::new(point.normal.y(), -point.normal.x());
                 let rt1 = r1.dot(tangent);
                 let rt2 = r2.dot(tangent);
                 let k_tangent = a.inv_mass
@@ -1031,8 +1031,8 @@ impl World {
                 assert!(k_tangent.abs() > reali(0));
                 point.mass_t = reali(1) / k_tangent;
                 //assert!(point.mass_t.is_finite());
-                let k_bias_factor = 0.2;
-                let k_allowed_penetration = 0.3;
+                let k_bias_factor = realf(0.2);
+                let k_allowed_penetration = realf(0.3);
                 point.bias = -k_bias_factor
                     * inv_dt
                     * (point.separation + k_allowed_penetration).min(reali(0));
@@ -1122,7 +1122,7 @@ impl World {
                     let relative_velocity = b_velocity + cross_scalar(b_angular_velocity, point.r2)
                         - a_velocity
                         - cross_scalar(a_angular_velocity, point.r1);
-                    let tangent = Real2::from((point.normal.y, -point.normal.x));
+                    let tangent = Real2::new(point.normal.y(), -point.normal.x());
                     let tangent_impulse = relative_velocity.dot(tangent);
                     let mut dpt = point.mass_t * -tangent_impulse;
 
@@ -1258,14 +1258,14 @@ impl World {
             result
         };
         let c = distance_func(pos);
-        let grad = Real2::from((
-            distance_func(pos + Real2::from((reali(1), reali(0)))) - c,
-            distance_func(pos + Real2::from((reali(0), reali(1)))) - c,
-        ));
-        let n = if grad.magnitude_squared() > (0.00001) {
-            grad.normalized()
+        let grad = Real2::new(
+            distance_func(pos + Real2::new(reali(1), reali(0))) - c,
+            distance_func(pos + Real2::new(reali(0), reali(1))) - c,
+        );
+        let n = if grad.length_squared() > realf(0.00001) {
+            grad.normalize()
         } else {
-            Real2::from((reali(0), reali(-1)))
+            Real2::new(reali(0), reali(-1))
         };
         (c, n)
     }

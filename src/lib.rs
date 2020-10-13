@@ -9,6 +9,15 @@ use serialization::*;
 use spatial_hash::*;
 pub use world::*;
 
+#[cfg(feature = "fixed_point")]
+mod fixed_math;
+#[cfg(feature = "fixed_point")]
+use fixed_math::*;
+#[cfg(feature = "fixed_point")]
+mod fixed_trig;
+#[cfg(feature = "fixed_point")]
+use fixed_trig::*;
+
 /// bit mask that can be either used together with World::set_collision_shape_flags
 /// to mark which bodies can collide, or mark bodies with arbitrary flags
 pub type ShapeFlags = u32;
@@ -17,15 +26,35 @@ pub type ShapeFlags = u32;
 pub type BodyOwner = u64;
 
 /// this can be locally overriden, for example, to use fixed-point math or doubles
+#[cfg(feature = "fixed_point")]
+pub type Real = fixed_math::Fixed;
+#[cfg(not(feature = "fixed_point"))]
 pub type Real = f32;
-/// used to construct internal constants in a way that survives redifinition of real
-fn reali(v: i32) -> Real {
+
+/// used to construct internal constants in a way that survives redefinition of real
+#[cfg(not(feature = "fixed_point"))]
+pub fn reali(v: i32) -> Real {
     v as Real
 }
+#[cfg(not(feature = "fixed_point"))]
+pub fn realf(f: f32) -> Real {
+    f
+}
+#[cfg(feature = "fixed_point")]
+pub fn reali(v: i32) -> Real {
+    fixed_math::Fixed::from_i32(v)
+}
+#[cfg(feature = "fixed_point")]
+pub fn realf(v: f32) -> Real {
+    fixed_math::Fixed::from_f32(v)
+}
 
-/// this can be locally overriden, for example, to use fixed-point math or doubles
+/// this can be locally overriden, for example, to u    se fixed-point math or doubles
 use num_traits::identities::Zero;
-pub type Real2 = vek::Vec2<f32>;
+#[cfg(feature = "fixed_point")]
+pub type Real2 = fixed_math::Fixed2;
+#[cfg(not(feature = "fixed_point"))]
+pub type Real2 = glam::Vec2;
 
 #[cfg(test)]
 mod tests {

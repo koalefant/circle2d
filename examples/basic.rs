@@ -1,10 +1,11 @@
 use miniquad::*;
 
 type IndexType = u16;
-type Vec2 = vek::Vec2<f32>;
+type Vec2 = glam::Vec2;
 fn vec2(x: f32, y: f32) -> Vec2 {
     Vec2::new(x, y)
 }
+use circle2d::{reali, realf, Real, Real2};
 
 // Please ignore the Geometry-mess, it is a quick copy-paste for drawing
 #[repr(C)]
@@ -114,8 +115,8 @@ impl<Vertex: VertexSize + VertexPos2 + VertexColor> Geometry<Vertex> {
             let sin = angle.sin();
             for (v, p) in pair.iter_mut().zip(&[0.0, 1.0]) {
                 v.set_pos([
-                    pos.x + cos * (radius - 0.5 + p),
-                    pos.y + sin * (radius - 0.5 + p),
+                    pos.x() + cos * (radius - 0.5 + p),
+                    pos.y() + sin * (radius - 0.5 + p),
                 ]);
                 v.set_alpha(((1.0 - p) * 255.0) as u8);
             }
@@ -162,7 +163,7 @@ impl<Vertex: VertexSize + VertexPos2 + VertexColor> Geometry<Vertex> {
                     pair.iter_mut()
                         .zip(&[(-ht - 1.0, 0), (-ht, 255), (ht, 255), (ht + 1.0, 0)])
                 {
-                    v.set_pos([pos.x + cos * (radius + p.0), pos.y + sin * (radius + p.0)]);
+                    v.set_pos([pos.x() + cos * (radius + p.0), pos.y() + sin * (radius + p.0)]);
                     v.set_alpha(p.1);
                 }
             }
@@ -232,13 +233,8 @@ impl<Vertex: VertexSize + VertexPos2 + VertexColor> Geometry<Vertex> {
 
     // Assumes coordinates to be pixels
     // based on AddPoyline from Dear ImGui by Omar Cornut (MIT)
-    pub fn add_polyline_aa(
-        &mut self,
-        points: &[Vec2],
-        color: [u8; 4],
-        closed: bool,
-        thickness: f32,
-    ) {
+    //     // Assumes coordinates to be pixels
+    pub fn add_polyline_aa(&mut self, points: &[Vec2], color: [u8; 4], closed: bool, thickness: f32) {
         if points.len() < 2 {
             return;
         }
@@ -246,79 +242,58 @@ impl<Vertex: VertexSize + VertexPos2 + VertexColor> Geometry<Vertex> {
             true => points.len(),
             false => points.len() - 1,
         };
-        let thick_line = thickness > 1.0;
+        let gradient_size = 1.0;
+        let thick_line = thickness > gradient_size;
 
-        let gradient_size = 1.0f32;
         let color_transparent = [color[0], color[1], color[2], 0];
         let index_count = if thick_line { count * 18 } else { count * 12 };
-        let vertex_count = if thick_line {
-            points.len() * 4
-        } else {
-            points.len() * 3
-        };
+        let vertex_count = if thick_line { points.len() * 4 } else { points.len() * 3 };
         let (vs, is, first) = self.allocate(vertex_count, index_count, Vertex::default());
         let mut temp_normals = Vec::new();
         let mut temp_points = Vec::new();
-        temp_normals.resize(points.len(), Vec2::new(0.0, 0.0));
-        temp_points.resize(
-            points.len() * if thick_line { 4 } else { 2 },
-            Vec2::new(0.0, 0.0),
-        );
+        temp_normals.resize(points.len(), vec2(0., 0.));
+        temp_points.resize(points.len() * if thick_line { 4 } else { 2 }, vec2(0., 0.));
         for i1 in 0..count {
             let i2 = if (i1 + 1) == points.len() { 0 } else { i1 + 1 };
             let mut delta = points[i2] - points[i1];
-            let len2 = delta.x * delta.x + delta.y * delta.y;
+            let len2 = delta.dot(delta);
             if len2 > 0.0 {
                 let len = len2.sqrt();
-                delta.x /= len;
-                delta.y /= len;
+                delta /= len;
             }
-            temp_normals[i1].x = delta.y;
-            temp_normals[i1].y = -delta.x;
+            temp_normals[i1] = vec2(delta.y(), -delta.x());
         }
         if !closed {
             temp_normals[points.len() - 1] = temp_normals[points.len() - 2];
         }
         if !thick_line {
             if !closed {
-                temp_points[0].x = points[0].x + temp_normals[0].x * gradient_size;
-                temp_points[0].y = points[0].y + temp_normals[0].y * gradient_size;
-                temp_points[1].x = points[1].x - temp_normals[1].x * gradient_size;
-                temp_points[1].y = points[1].y - temp_normals[1].y * gradient_size;
+                temp_points[0] = points[0] + temp_normals[0] * gradient_size;
+                temp_points[1] = points[1] - temp_normals[1] * gradient_size;
 
-                temp_points[(points.len() - 1) * 2 + 0].x =
-                    points[points.len() - 1].x + temp_normals[points.len() - 1].x * gradient_size;
-                temp_points[(points.len() - 1) * 2 + 0].y =
-                    points[points.len() - 1].y + temp_normals[points.len() - 1].y * gradient_size;
-                temp_points[(points.len() - 1) * 2 + 1].x =
-                    points[points.len() - 1].x - temp_normals[points.len() - 1].x * gradient_size;
-                temp_points[(points.len() - 1) * 2 + 1].y =
-                    points[points.len() - 1].y - temp_normals[points.len() - 1].y * gradient_size;
+                temp_points[(points.len() - 1) * 2 + 0] =
+                    points[points.len() - 1] + temp_normals[points.len() - 1] * gradient_size;
+                temp_points[(points.len() - 1) * 2 + 1] =
+                    points[points.len() - 1] - temp_normals[points.len() - 1] * gradient_size;
             }
 
             let mut idx1 = first;
             for i1 in 0..count {
                 let i2 = if (i1 + 1) == points.len() { 0 } else { i1 + 1 };
-                let idx2 = if (i1 + 1) == points.len() {
-                    first
-                } else {
-                    idx1 + 3
-                };
+                let idx2 = if (i1 + 1) == points.len() { first } else { idx1 + 3 };
 
                 let mut dm = (temp_normals[i1] + temp_normals[i2]) * 0.5;
-                let mut dm_len2 = dm.x * dm.x + dm.y * dm.y;
+                // average normals
+                let mut dm_len2 = dm.dot(dm);
                 if dm_len2 < 0.5 {
                     dm_len2 = 0.5;
                 }
                 let inv_len2 = gradient_size / dm_len2;
-                dm.x *= inv_len2;
-                dm.y *= inv_len2;
+                dm *= inv_len2;
 
                 // compute points
-                temp_points[i2 * 2 + 0].x = points[i2].x + dm.x;
-                temp_points[i2 * 2 + 0].y = points[i2].y + dm.y;
-                temp_points[i2 * 2 + 1].x = points[i2].x - dm.x;
-                temp_points[i2 * 2 + 1].y = points[i2].y - dm.y;
+                temp_points[i2 * 2 + 0] = points[i2] + dm;
+                temp_points[i2 * 2 + 1] = points[i2] - dm;
 
                 // indices
                 is[i1 * 12..(i1 + 1) * 12].copy_from_slice(&[
@@ -340,76 +315,65 @@ impl<Vertex: VertexSize + VertexPos2 + VertexColor> Geometry<Vertex> {
             }
 
             for i in 0..points.len() {
-                vs[i * 3 + 0].set_pos([points[i].x, points[i].y]);
+                vs[i * 3 + 0].set_pos(points[i].into());
                 vs[i * 3 + 0].set_color(color);
-                vs[i * 3 + 1].set_pos([temp_points[i * 2 + 0].x, temp_points[i * 2 + 0].y]);
+                vs[i * 3 + 1].set_pos(temp_points[i * 2 + 0].into());
                 vs[i * 3 + 1].set_color(color_transparent);
-                vs[i * 3 + 2].set_pos([temp_points[i * 2 + 1].x, temp_points[i * 2 + 1].y]);
+                vs[i * 3 + 2].set_pos(temp_points[i * 2 + 1].into());
                 vs[i * 3 + 2].set_color(color_transparent);
             }
         } else {
             let half_inner_thickness = (thickness - gradient_size) * 0.5;
             if !closed {
-                temp_points[0].x =
-                    points[0].x + temp_normals[0].x * (half_inner_thickness + gradient_size);
-                temp_points[0].y =
-                    points[0].y + temp_normals[0].y * (half_inner_thickness + gradient_size);
-                temp_points[1].x = points[0].x + temp_normals[0].x * half_inner_thickness;
-                temp_points[1].y = points[0].y + temp_normals[0].y * half_inner_thickness;
-                temp_points[2].x = points[0].x - temp_normals[0].x * half_inner_thickness;
-                temp_points[2].y = points[0].y - temp_normals[0].y * half_inner_thickness;
-                temp_points[3].x =
-                    points[0].x - temp_normals[0].x * (half_inner_thickness + gradient_size);
-                temp_points[3].y =
-                    points[0].y - temp_normals[0].y * (half_inner_thickness + gradient_size);
+                temp_points[0] = points[0] + temp_normals[0] * (half_inner_thickness + gradient_size);
+                temp_points[1] = points[0] + temp_normals[0] * half_inner_thickness;
+                temp_points[2] = points[0] - temp_normals[0] * half_inner_thickness;
+                temp_points[3] = points[0] - temp_normals[0] * (half_inner_thickness + gradient_size);
 
-                temp_points[(points.len() - 1) * 4 + 0].x = points[points.len() - 1].x
-                    + temp_normals[points.len() - 1].x * (half_inner_thickness + gradient_size);
-                temp_points[(points.len() - 1) * 4 + 0].y = points[points.len() - 1].y
-                    + temp_normals[points.len() - 1].y * (half_inner_thickness + gradient_size);
-                temp_points[(points.len() - 1) * 4 + 1].x = points[points.len() - 1].x
-                    + temp_normals[points.len() - 1].x * (half_inner_thickness);
-                temp_points[(points.len() - 1) * 4 + 1].y = points[points.len() - 1].y
-                    + temp_normals[points.len() - 1].y * (half_inner_thickness);
-                temp_points[(points.len() - 1) * 4 + 2].x = points[points.len() - 1].x
-                    - temp_normals[points.len() - 1].x * (half_inner_thickness);
-                temp_points[(points.len() - 1) * 4 + 2].y = points[points.len() - 1].y
-                    - temp_normals[points.len() - 1].y * (half_inner_thickness);
-                temp_points[(points.len() - 1) * 4 + 3].x = points[points.len() - 1].x
-                    - temp_normals[points.len() - 1].x * (half_inner_thickness + gradient_size);
-                temp_points[(points.len() - 1) * 4 + 3].y = points[points.len() - 1].y
-                    - temp_normals[points.len() - 1].y * (half_inner_thickness + gradient_size);
+                temp_points[(points.len() - 1) * 4 + 0] =
+                    points[points.len() - 1] + temp_normals[points.len() - 1] * (half_inner_thickness + gradient_size);
+                temp_points[(points.len() - 1) * 4 + 1] =
+                    points[points.len() - 1] + temp_normals[points.len() - 1] * (half_inner_thickness);
+                temp_points[(points.len() - 1) * 4 + 2] =
+                    points[points.len() - 1] - temp_normals[points.len() - 1] * (half_inner_thickness);
+                temp_points[(points.len() - 1) * 4 + 3] =
+                    points[points.len() - 1] - temp_normals[points.len() - 1] * (half_inner_thickness + gradient_size);
             }
 
             let mut idx1 = first;
             for i1 in 0..count {
                 let i2 = if (i1 + 1) == points.len() { 0 } else { i1 + 1 };
-                let idx2 = if (i1 + 1) == points.len() {
-                    first
-                } else {
-                    idx1 + 4
-                };
+                let idx2 = if (i1 + 1) == points.len() { first } else { idx1 + 4 };
 
-                let mut dm = (temp_normals[i1] + temp_normals[i2]) * 0.5;
-                let mut dm_len2 = dm.x * dm.x + dm.y * dm.y;
-                if dm_len2 < 0.5 {
-                    dm_len2 = 0.5;
+                let mut dm = temp_normals[i1] + temp_normals[i2] * 0.5;
+
+                // direction of first edge
+                let v0 = vec2(-temp_normals[i1].y(), temp_normals[i1].x());
+
+                // project direction of first edge on second edge normal
+                if closed || i2 != count {
+                    let dot = v0.dot(temp_normals[i2]);
+                    // Negative direction of 2nd edge
+                    let v1 = vec2(temp_normals[i2].y(), -temp_normals[i2].x());
+                    // Scale
+                    dm = (v0 + v1) / dot;
+                } else {
+                    let mut dm_len2 = dm.dot(dm);
+                    if dm_len2 < 0.5 {
+                        dm_len2 = 0.5;
+                    }
+                    let inv_len2 = 1.0 / dm_len2;
+                    dm *= inv_len2;
                 }
-                let inv_len2 = 1.0 / dm_len2;
-                dm.x *= inv_len2;
-                dm.y *= inv_len2;
+
                 let dm_out = dm * (half_inner_thickness + gradient_size);
                 let dm_in = dm * half_inner_thickness;
 
                 // points
-                temp_points[i2 * 4 + 0].x = points[i2].x + dm_out.x;
-                temp_points[i2 * 4 + 0].y = points[i2].y + dm_out.y;
-                temp_points[i2 * 4 + 1].x = points[i2].x + dm_in.x;
-                temp_points[i2 * 4 + 1].y = points[i2].y + dm_in.y;
-                temp_points[i2 * 4 + 2].x = points[i2].x - dm_in.x;
-                temp_points[i2 * 4 + 2].y = points[i2].y - dm_in.y;
-                temp_points[i2 * 4 + 3].x = points[i2].x - dm_out.x;
-                temp_points[i2 * 4 + 3].y = points[i2].y - dm_out.y;
+                temp_points[i2 * 4 + 0] = points[i2] + dm_out;
+                temp_points[i2 * 4 + 1] = points[i2] + dm_in;
+                temp_points[i2 * 4 + 2] = points[i2] - dm_in;
+                temp_points[i2 * 4 + 3] = points[i2] - dm_out;
 
                 // indices
                 is[18 * i1..18 * (i1 + 1)].copy_from_slice(&[
@@ -436,20 +400,21 @@ impl<Vertex: VertexSize + VertexPos2 + VertexColor> Geometry<Vertex> {
             }
 
             for i in 0..points.len() {
-                vs[i * 4 + 0].set_pos([temp_points[i * 4 + 0].x, temp_points[i * 4 + 0].y]);
+                vs[i * 4 + 0].set_pos(temp_points[i * 4 + 0].into());
                 vs[i * 4 + 0].set_color(color_transparent);
 
-                vs[i * 4 + 1].set_pos([temp_points[i * 4 + 1].x, temp_points[i * 4 + 1].y]);
+                vs[i * 4 + 1].set_pos(temp_points[i * 4 + 1].into());
                 vs[i * 4 + 1].set_color(color);
 
-                vs[i * 4 + 2].set_pos([temp_points[i * 4 + 2].x, temp_points[i * 4 + 2].y]);
+                vs[i * 4 + 2].set_pos(temp_points[i * 4 + 2].into());
                 vs[i * 4 + 2].set_color(color);
 
-                vs[i * 4 + 3].set_pos([temp_points[i * 4 + 3].x, temp_points[i * 4 + 3].y]);
+                vs[i * 4 + 3].set_pos(temp_points[i * 4 + 3].into());
                 vs[i * 4 + 3].set_color(color_transparent);
             }
         }
     }
+
 }
 
 impl<Vertex: VertexSize + VertexPos2 + VertexUV> Geometry<Vertex> {
@@ -537,7 +502,7 @@ impl Stage {
         for i in 0..w * h {
             let x = i % w;
             let y = i / w;
-            let d = sd_terrain(vec2(x as f32 + 0.5, y as f32 + 0.5));
+            let d: f32 = sd_terrain(vec2(x as f32 + 0.5, y as f32 + 0.5).into()).into();
             let fill = 1.0 - d.max(0.0).min(1.0);
             let val = (fill * 255.0) as u8;
             pixels[i * 4 + 0] = val;
@@ -605,8 +570,8 @@ impl Stage {
             shape_flags: 2,
             mass: None,
             inertia: None,
-            restitution: 0.0,
-            friction: 1.0,
+            restitution: reali(0),
+            friction: reali(1),
             ..Default::default()
         });
 
@@ -617,25 +582,25 @@ impl Stage {
             let y = unsafe { miniquad::rand() as f32 / miniquad::RAND_MAX as f32 * h as f32 };
             let radius =
                 8.0 + 16.0 * unsafe { miniquad::rand() as f32 / miniquad::RAND_MAX as f32 };
-            let d = (sd_terrain(vec2(x, y)) - radius).min(world.sample_distance(
-                vec2(x, y),
+            let d: Real = (sd_terrain(vec2(x, y).into()) - realf(radius)).min(world.sample_distance(
+                vec2(x, y).into(),
                 terrain,
                 0xffffffff,
-                32.0,
-            ));
-            if d < 0.0 {
+                reali(32),
+            ).into());
+            if d < reali(0) {
                 // hitting something, try again
                 continue;
             }
 
             world.add_body(circle2d::BodyDef {
-                shape: circle2d::Shape::Circle(radius),
+                shape: circle2d::Shape::Circle(radius.into()),
                 shape_flags: 1 | 2,
-                pos: vec2(x, y),
-                mass: Some(1.0),
-                inertia: Some(1.0),
-                friction: 0.5,
-                restitution: 0.6,
+                pos: vec2(x, y).into(),
+                mass: Some(reali(1)),
+                inertia: Some(reali(1)),
+                friction: realf(0.5),
+                restitution: realf(0.6),
                 ..Default::default()
             });
             num_created += 1;
@@ -658,31 +623,31 @@ impl Stage {
     }
 }
 
-pub fn sd_box(p: Vec2, b: Vec2) -> f32 {
-    let q = p.map(|v| v.abs()) - b;
-    Vec2::partial_max(q, Vec2::zero()).magnitude() + q.x.max(q.y).min(0.)
+pub fn sd_box(p: Real2, b: Real2) -> Real {
+    let q = p.abs() - b;
+    q.max(Real2::zero()).length() + q.x().max(q.y()).min(reali(0))
 }
 
-pub fn sd_circle(p: Vec2, center: Vec2, r: f32) -> f32 {
-    (p - center).magnitude() - r
+pub fn sd_circle(p: Real2, center: Real2, r: Real) -> Real {
+    (p - center).length() - r
 }
 
-pub fn sd_line(p: Vec2, a: Vec2, b: Vec2, r: f32) -> f32 {
+pub fn sd_line(p: Real2, a: Real2, b: Real2, r: Real) -> Real {
     let pa = p - a;
     let ba = b - a;
-    let h = (pa.dot(ba) / ba.dot(ba)).max(0.).min(1.);
-    (pa - ba * h).magnitude() - r
+    let h = (pa.dot(ba) / ba.dot(ba)).max(reali(0)).min(reali(1));
+    (pa - ba * h).length() - r
 }
 
-fn sd_terrain(p: Vec2) -> f32 {
-    let mut d = -sd_box(p - vec2(1280. * 0.5, 720. * 0.5 - 100.0), vec2(590., 210.));
-    d = d.max(-sd_box(p - vec2(400., 470.), vec2(200., 200.)));
-    d = d.max(-sd_circle(p, vec2(940., 500.), 150.0));
+fn sd_terrain(p: Real2) -> Real {
+    let mut d = -sd_box(p - vec2(1280. * 0.5, 720. * 0.5 - 100.0).into(), vec2(590., 210.).into());
+    d = d.max(-sd_box(p - vec2(400., 470.).into(), vec2(200., 200.).into()));
+    d = d.max(-sd_circle(p, vec2(940., 500.).into(), reali(150)));
 
-    d = d.min(sd_circle(p, vec2(1040., 350.), 60.0));
-    d = d.min(sd_circle(p, vec2(170., 450.), 100.));
-    d = d.min(sd_line(p, vec2(200., 200.), vec2(600.0, 350.0), 10.0));
-    d = d.min(sd_line(p, vec2(800., 350.), vec2(1000.0, 150.0), 10.0));
+    d = d.min(sd_circle(p, vec2(1040., 350.).into(), reali(60)));
+    d = d.min(sd_circle(p, vec2(170., 450.).into(), reali(100)));
+    d = d.min(sd_line(p, vec2(200., 200.).into(), vec2(600.0, 350.0).into(), reali(10)));
+    d = d.min(sd_line(p, vec2(800., 350.).into(), vec2(1000.0, 150.0).into(), reali(10)));
     d
 }
 
@@ -692,14 +657,14 @@ impl EventHandler for Stage {
         let time_step = 0.016;
         // do not simulate more than 3 frames
         let mut remaining_dt = (time - self.last_frame).min(time_step * 3.0);
-        let distance_func = |p: Vec2| sd_terrain(p);
-        let normal_func = |p: Vec2| -> Vec2 {
+        let distance_func = |p: Real2| sd_terrain(p);
+        let normal_func = |p: Real2| -> Real2 {
             let samples = [
                 distance_func(p),
-                distance_func(p + vec2(0.1, 0.0)),
-                distance_func(p + vec2(0.0, 0.1)),
+                distance_func(p + vec2(0.1, 0.0).into()),
+                distance_func(p + vec2(0.0, 0.1).into()),
             ];
-            vec2(samples[1] - samples[0], samples[2] - samples[0]).normalized()
+            Real2::new(samples[1] - samples[0], samples[2] - samples[0]).normalize()
         };
         let dt = time_step as f32;
         while remaining_dt > time_step {
@@ -710,18 +675,18 @@ impl EventHandler for Stage {
             let active_bodies: Vec<_> = self.world.active_bodies.iter().copied().collect();
             for b in active_bodies.into_iter() {
                 self.world
-                    .body_set_force_by_acceleration(b, vec2(0., 800.0));
+                    .body_set_force_by_acceleration(b, vec2(0., 800.0).into());
             }
             if let Some(b) = self.grabbed_body {
-                let pos = self.world.body_position(b);
+                let pos = self.world.body_position(b).into();
                 let force = (self.mouse_pos - pos) * 100.0;
-                self.world.body_apply_force(b, force);
+                self.world.body_apply_force(b, force.into());
             }
 
             self.world.simulate_physics(
                 distance_func,
                 normal_func,
-                dt,
+                dt.into(),
                 &mut started_contacts,
                 &mut finished_contacts,
             );
@@ -729,7 +694,7 @@ impl EventHandler for Stage {
             // here one can update velocities after simulation if needed
 
             // update body positions/orientation
-            self.world.update_positions(dt, &distance_func);
+            self.world.update_positions(dt.into(), &distance_func);
 
             remaining_dt -= time_step;
         }
@@ -746,27 +711,27 @@ impl EventHandler for Stage {
             MouseButton::Left => {
                 self.world.find_exact(
                     &mut bodies,
-                    vec2(x, y),
-                    circle2d::Shape::Circle(1.0),
+                    vec2(x, y).into(),
+                    circle2d::Shape::Circle(reali(1)),
                     1,
                     &sd_terrain,
                 );
                 self.grabbed_body = bodies.first().copied();
             }
             MouseButton::Right => {
-                let r = 100.0;
+                let r = reali(100);
                 self.world.find_exact(
                     &mut bodies,
-                    vec2(x, y),
+                    vec2(x, y).into(),
                     circle2d::Shape::Circle(r),
                     1,
                     &sd_terrain,
                 );
                 for b in bodies.into_iter() {
-                    let delta = self.world.body_position(b) - vec2(x, y);
+                    let delta = self.world.body_position(b) - vec2(x, y).into();
                     self.world.body_set_velocity(
                         b,
-                        delta.normalized() * (1.0 - delta.magnitude() / r) * 3000.0,
+                        delta.normalize() * (reali(1) - delta.length() / r) * reali(3000),
                     );
                 }
             }
@@ -806,9 +771,9 @@ impl EventHandler for Stage {
 
         for k in self.world.bodies() {
             let shape = self.world.body_shape(k);
-            let pos = self.world.body_position(k);
-            let vel = self.world.body_velocity(k);
-            let rotation: f32 = self.world.body_rotation(k);
+            let pos = self.world.body_position(k).into();
+            let vel: Vec2 = self.world.body_velocity(k).into();
+            let rotation: f32 = self.world.body_rotation(k).into();
             let shape_flags = self.world.body_shape_flags(k);
             let contact_count: u32 = self
                 .world
@@ -838,7 +803,7 @@ impl EventHandler for Stage {
 
             match shape {
                 circle2d::Shape::Circle(radius) => {
-                    let radius: f32 = radius;
+                    let radius: f32 = radius.into();
                     if (shape_flags & self.world.collision_shape_flags) == 0 {
                         self.geometry.add_circle_outline_aa(
                             pos,
@@ -849,7 +814,7 @@ impl EventHandler for Stage {
                         );
                     } else {
                         self.geometry
-                            .add_circle_aa(pos, radius, 32, Vertex { color, ..def });
+                            .add_circle_aa(pos.into(), radius, 32, Vertex { color, ..def });
                     }
                     let dir = Vec2::new(rotation.cos(), rotation.sin());
                     self.geometry.add_polyline_aa(
@@ -876,13 +841,13 @@ impl EventHandler for Stage {
             let color = [50, 50, 0, 255];
             for point in p.points.iter() {
                 self.geometry.add_polyline_aa(
-                    &[point.position, point.position + point.normal * 5.0],
+                    &[point.position.into(), (point.position + point.normal * reali(5)).into()],
                     color,
                     false,
                     1.0,
                 );
                 self.geometry.add_circle_aa(
-                    point.position,
+                    point.position.into(),
                     1.5,
                     8,
                     Vertex {
