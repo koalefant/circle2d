@@ -235,7 +235,8 @@ impl Shape {
                     } else {
                         Real2::new(reali(0), reali(-1))
                     };
-                    let position = realf(0.5) * (a_pos + normal * a_radius + b_pos + -normal * b_radius);
+                    let position =
+                        realf(0.5) * (a_pos + normal * a_radius + b_pos + -normal * b_radius);
                     points.push(ContactPoint {
                         position,
                         normal,

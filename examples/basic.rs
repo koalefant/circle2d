@@ -5,7 +5,7 @@ type Vec2 = glam::Vec2;
 fn vec2(x: f32, y: f32) -> Vec2 {
     Vec2::new(x, y)
 }
-use circle2d::{reali, realf, Real, Real2};
+use circle2d::{realf, reali, Real, Real2};
 
 // Please ignore the Geometry-mess, it is a quick copy-paste for drawing
 #[repr(C)]
@@ -163,7 +163,10 @@ impl<Vertex: VertexSize + VertexPos2 + VertexColor> Geometry<Vertex> {
                     pair.iter_mut()
                         .zip(&[(-ht - 1.0, 0), (-ht, 255), (ht, 255), (ht + 1.0, 0)])
                 {
-                    v.set_pos([pos.x() + cos * (radius + p.0), pos.y() + sin * (radius + p.0)]);
+                    v.set_pos([
+                        pos.x() + cos * (radius + p.0),
+                        pos.y() + sin * (radius + p.0),
+                    ]);
                     v.set_alpha(p.1);
                 }
             }
@@ -234,7 +237,13 @@ impl<Vertex: VertexSize + VertexPos2 + VertexColor> Geometry<Vertex> {
     // Assumes coordinates to be pixels
     // based on AddPoyline from Dear ImGui by Omar Cornut (MIT)
     //     // Assumes coordinates to be pixels
-    pub fn add_polyline_aa(&mut self, points: &[Vec2], color: [u8; 4], closed: bool, thickness: f32) {
+    pub fn add_polyline_aa(
+        &mut self,
+        points: &[Vec2],
+        color: [u8; 4],
+        closed: bool,
+        thickness: f32,
+    ) {
         if points.len() < 2 {
             return;
         }
@@ -247,7 +256,11 @@ impl<Vertex: VertexSize + VertexPos2 + VertexColor> Geometry<Vertex> {
 
         let color_transparent = [color[0], color[1], color[2], 0];
         let index_count = if thick_line { count * 18 } else { count * 12 };
-        let vertex_count = if thick_line { points.len() * 4 } else { points.len() * 3 };
+        let vertex_count = if thick_line {
+            points.len() * 4
+        } else {
+            points.len() * 3
+        };
         let (vs, is, first) = self.allocate(vertex_count, index_count, Vertex::default());
         let mut temp_normals = Vec::new();
         let mut temp_points = Vec::new();
@@ -280,7 +293,11 @@ impl<Vertex: VertexSize + VertexPos2 + VertexColor> Geometry<Vertex> {
             let mut idx1 = first;
             for i1 in 0..count {
                 let i2 = if (i1 + 1) == points.len() { 0 } else { i1 + 1 };
-                let idx2 = if (i1 + 1) == points.len() { first } else { idx1 + 3 };
+                let idx2 = if (i1 + 1) == points.len() {
+                    first
+                } else {
+                    idx1 + 3
+                };
 
                 let mut dm = (temp_normals[i1] + temp_normals[i2]) * 0.5;
                 // average normals
@@ -325,25 +342,31 @@ impl<Vertex: VertexSize + VertexPos2 + VertexColor> Geometry<Vertex> {
         } else {
             let half_inner_thickness = (thickness - gradient_size) * 0.5;
             if !closed {
-                temp_points[0] = points[0] + temp_normals[0] * (half_inner_thickness + gradient_size);
+                temp_points[0] =
+                    points[0] + temp_normals[0] * (half_inner_thickness + gradient_size);
                 temp_points[1] = points[0] + temp_normals[0] * half_inner_thickness;
                 temp_points[2] = points[0] - temp_normals[0] * half_inner_thickness;
-                temp_points[3] = points[0] - temp_normals[0] * (half_inner_thickness + gradient_size);
+                temp_points[3] =
+                    points[0] - temp_normals[0] * (half_inner_thickness + gradient_size);
 
-                temp_points[(points.len() - 1) * 4 + 0] =
-                    points[points.len() - 1] + temp_normals[points.len() - 1] * (half_inner_thickness + gradient_size);
-                temp_points[(points.len() - 1) * 4 + 1] =
-                    points[points.len() - 1] + temp_normals[points.len() - 1] * (half_inner_thickness);
-                temp_points[(points.len() - 1) * 4 + 2] =
-                    points[points.len() - 1] - temp_normals[points.len() - 1] * (half_inner_thickness);
-                temp_points[(points.len() - 1) * 4 + 3] =
-                    points[points.len() - 1] - temp_normals[points.len() - 1] * (half_inner_thickness + gradient_size);
+                temp_points[(points.len() - 1) * 4 + 0] = points[points.len() - 1]
+                    + temp_normals[points.len() - 1] * (half_inner_thickness + gradient_size);
+                temp_points[(points.len() - 1) * 4 + 1] = points[points.len() - 1]
+                    + temp_normals[points.len() - 1] * (half_inner_thickness);
+                temp_points[(points.len() - 1) * 4 + 2] = points[points.len() - 1]
+                    - temp_normals[points.len() - 1] * (half_inner_thickness);
+                temp_points[(points.len() - 1) * 4 + 3] = points[points.len() - 1]
+                    - temp_normals[points.len() - 1] * (half_inner_thickness + gradient_size);
             }
 
             let mut idx1 = first;
             for i1 in 0..count {
                 let i2 = if (i1 + 1) == points.len() { 0 } else { i1 + 1 };
-                let idx2 = if (i1 + 1) == points.len() { first } else { idx1 + 4 };
+                let idx2 = if (i1 + 1) == points.len() {
+                    first
+                } else {
+                    idx1 + 4
+                };
 
                 let mut dm = temp_normals[i1] + temp_normals[i2] * 0.5;
 
@@ -414,7 +437,6 @@ impl<Vertex: VertexSize + VertexPos2 + VertexColor> Geometry<Vertex> {
             }
         }
     }
-
 }
 
 impl<Vertex: VertexSize + VertexPos2 + VertexUV> Geometry<Vertex> {
@@ -531,12 +553,18 @@ impl Stage {
             images: vec![],
         };
 
-        let shader = Shader::new(ctx, shader::VERTEX, shader::FRAGMENT, ShaderMeta {
-            images: vec!["tex".into()],
-            uniforms: UniformBlockLayout {
-                uniforms: vec![UniformDesc::new("screen_size", UniformType::Float2)],
+        let shader = Shader::new(
+            ctx,
+            shader::VERTEX,
+            shader::FRAGMENT,
+            ShaderMeta {
+                images: vec!["tex".into()],
+                uniforms: UniformBlockLayout {
+                    uniforms: vec![UniformDesc::new("screen_size", UniformType::Float2)],
+                },
             },
-        }).unwrap();
+        )
+        .unwrap();
         let pipeline = Pipeline::with_params(
             ctx,
             &[BufferLayout::default()],
@@ -587,12 +615,11 @@ impl Stage {
             let y = unsafe { miniquad::rand() as f32 / miniquad::RAND_MAX as f32 * h as f32 };
             let radius =
                 8.0 + 16.0 * unsafe { miniquad::rand() as f32 / miniquad::RAND_MAX as f32 };
-            let d: Real = (sd_terrain(vec2(x, y).into()) - realf(radius)).min(world.sample_distance(
-                vec2(x, y).into(),
-                terrain,
-                0xffffffff,
-                reali(32),
-            ).into());
+            let d: Real = (sd_terrain(vec2(x, y).into()) - realf(radius)).min(
+                world
+                    .sample_distance(vec2(x, y).into(), terrain, 0xffffffff, reali(32))
+                    .into(),
+            );
             if d < reali(0) {
                 // hitting something, try again
                 continue;
@@ -645,14 +672,27 @@ pub fn sd_line(p: Real2, a: Real2, b: Real2, r: Real) -> Real {
 }
 
 fn sd_terrain(p: Real2) -> Real {
-    let mut d = -sd_box(p - vec2(1280. * 0.5, 720. * 0.5).into(), vec2(590., 310.).into());
+    let mut d = -sd_box(
+        p - vec2(1280. * 0.5, 720. * 0.5).into(),
+        vec2(590., 310.).into(),
+    );
     d = d.min(sd_box(p - vec2(600., 670.).into(), vec2(50., 150.).into()));
     d = d.min(sd_circle(p, vec2(950., 650.).into(), reali(100)));
 
     d = d.min(sd_circle(p, vec2(1040., 350.).into(), reali(60)));
     d = d.min(sd_circle(p, vec2(80., 450.).into(), reali(100)));
-    d = d.min(sd_line(p, vec2(200., 200.).into(), vec2(600.0, 350.0).into(), reali(10)));
-    d = d.min(sd_line(p, vec2(800., 350.).into(), vec2(1000.0, 150.0).into(), reali(10)));
+    d = d.min(sd_line(
+        p,
+        vec2(200., 200.).into(),
+        vec2(600.0, 350.0).into(),
+        reali(10),
+    ));
+    d = d.min(sd_line(
+        p,
+        vec2(800., 350.).into(),
+        vec2(1000.0, 150.0).into(),
+        reali(10),
+    ));
     d
 }
 
@@ -818,8 +858,12 @@ impl EventHandler for Stage {
                             Vertex { color, ..def },
                         );
                     } else {
-                        self.geometry
-                            .add_circle_aa(pos.into(), radius, 32, Vertex { color, ..def });
+                        self.geometry.add_circle_aa(
+                            pos.into(),
+                            radius,
+                            32,
+                            Vertex { color, ..def },
+                        );
                     }
                     let dir = Vec2::new(rotation.cos(), rotation.sin());
                     self.geometry.add_polyline_aa(
@@ -846,7 +890,10 @@ impl EventHandler for Stage {
             let color = [50, 50, 0, 255];
             for point in p.points.iter() {
                 self.geometry.add_polyline_aa(
-                    &[point.position.into(), (point.position + point.normal * reali(5)).into()],
+                    &[
+                        point.position.into(),
+                        (point.position + point.normal * reali(5)).into(),
+                    ],
                     color,
                     false,
                     1.0,

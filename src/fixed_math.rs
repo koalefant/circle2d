@@ -21,7 +21,6 @@ impl std::fmt::Debug for Fixed64 {
 
 pub type Fixed = Fixed64;
 
-
 impl Fixed64 {
     pub const MAX: Fixed64 = Fixed64(i64::MAX);
     pub const MIN: Fixed64 = Fixed64(i64::MIN);
@@ -132,7 +131,10 @@ impl Fixed64 {
             }
         }
 
-        let un21: u64 = un32.wrapping_mul(b).wrapping_add(un1).wrapping_sub(q1.wrapping_mul(v)); // Multiply and subtract
+        let un21: u64 = un32
+            .wrapping_mul(b)
+            .wrapping_add(un1)
+            .wrapping_sub(q1.wrapping_mul(v)); // Multiply and subtract
 
         // Compute the second quotient digit, q0
         let mut q0: u64 = un21 / vn1;
@@ -268,7 +270,7 @@ impl std::ops::DivAssign for Fixed64 {
 }
 
 impl From<f32> for Fixed64 {
-    fn from(v: f32)->Fixed64 {
+    fn from(v: f32) -> Fixed64 {
         Fixed64::from_f32(v)
     }
 }
@@ -325,8 +327,12 @@ impl Fixed2 {
     pub fn new(x: Fixed, y: Fixed) -> Self {
         Self { x, y }
     }
-    pub fn x(&self)->Fixed{ self.x }
-    pub fn y(&self)->Fixed{ self.y }
+    pub fn x(&self) -> Fixed {
+        self.x
+    }
+    pub fn y(&self) -> Fixed {
+        self.y
+    }
     pub fn set_x(&mut self, x: Fixed) {
         self.x = x;
     }
@@ -358,7 +364,10 @@ impl Fixed2 {
     pub fn length(self) -> Fixed {
         let len_squared = self.dot(self);
         if len_squared.0 < 0 {
-            panic!("negative dot product result: {} for vector {:?}", len_squared, self);
+            panic!(
+                "negative dot product result: {} for vector {:?}",
+                len_squared, self
+            );
         }
         len_squared.sqrt()
     }
@@ -398,29 +407,27 @@ impl Fixed2 {
 }
 
 impl Into<(i32, i32)> for Fixed2 {
-    fn into(self)->(i32, i32) {
+    fn into(self) -> (i32, i32) {
         (self.x.to_i32(), self.y.to_i32())
     }
 }
 impl Into<Vec2> for Fixed2 {
-    fn into(self)->Vec2 {
+    fn into(self) -> Vec2 {
         Vec2::new(self.x.to_f32(), self.y.to_f32())
     }
 }
 
 impl From<Vec2> for Fixed2 {
-    fn from(v: Vec2)->Fixed2 {
+    fn from(v: Vec2) -> Fixed2 {
         Fixed2::new(Fixed::from_f32(v.x()), Fixed::from_f32(v.y()))
     }
 }
-
 
 impl From<Fixed64> for f32 {
     fn from(v: Fixed64) -> f32 {
         v.to_f32()
     }
 }
-
 
 impl std::cmp::PartialOrd for Fixed2 {
     fn partial_cmp(&self, other: &Fixed2) -> Option<std::cmp::Ordering> {
@@ -453,7 +460,10 @@ impl std::ops::Neg for Fixed2 {
     type Output = Fixed2;
     #[inline(always)]
     fn neg(self) -> Self {
-        Fixed2 { x: -self.x, y: -self.y }
+        Fixed2 {
+            x: -self.x,
+            y: -self.y,
+        }
     }
 }
 impl std::ops::Add for Fixed2 {
@@ -595,19 +605,47 @@ impl FixedLerp for Fixed2 {
 impl FixedLerp for [u8; 3] {
     fn lerp_f(self, b: Self, f: Fixed) -> Self {
         [
-            (fixi(self[0] as _)).lerp_f(fixi(b[0] as _), f).to_i32().max(0).min(255) as u8,
-            (fixi(self[1] as _)).lerp_f(fixi(b[1] as _), f).to_i32().max(0).min(255) as u8,
-            (fixi(self[2] as _)).lerp_f(fixi(b[2] as _), f).to_i32().max(0).min(255) as u8,
+            (fixi(self[0] as _))
+                .lerp_f(fixi(b[0] as _), f)
+                .to_i32()
+                .max(0)
+                .min(255) as u8,
+            (fixi(self[1] as _))
+                .lerp_f(fixi(b[1] as _), f)
+                .to_i32()
+                .max(0)
+                .min(255) as u8,
+            (fixi(self[2] as _))
+                .lerp_f(fixi(b[2] as _), f)
+                .to_i32()
+                .max(0)
+                .min(255) as u8,
         ]
     }
 }
 impl FixedLerp for [u8; 4] {
     fn lerp_f(self, b: Self, f: Fixed) -> Self {
         [
-            (fixi(self[0] as _)).lerp_f(fixi(b[0] as _), f).to_i32().max(0).min(255) as u8,
-            (fixi(self[1] as _)).lerp_f(fixi(b[1] as _), f).to_i32().max(0).min(255) as u8,
-            (fixi(self[2] as _)).lerp_f(fixi(b[2] as _), f).to_i32().max(0).min(255) as u8,
-            (fixi(self[3] as _)).lerp_f(fixi(b[3] as _), f).to_i32().max(0).min(255) as u8,
+            (fixi(self[0] as _))
+                .lerp_f(fixi(b[0] as _), f)
+                .to_i32()
+                .max(0)
+                .min(255) as u8,
+            (fixi(self[1] as _))
+                .lerp_f(fixi(b[1] as _), f)
+                .to_i32()
+                .max(0)
+                .min(255) as u8,
+            (fixi(self[2] as _))
+                .lerp_f(fixi(b[2] as _), f)
+                .to_i32()
+                .max(0)
+                .min(255) as u8,
+            (fixi(self[3] as _))
+                .lerp_f(fixi(b[3] as _), f)
+                .to_i32()
+                .max(0)
+                .min(255) as u8,
         ]
     }
 }
