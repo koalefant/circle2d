@@ -1055,8 +1055,8 @@ impl World {
                     b_velocity += p * b.inv_mass;
                     a_angular_velocity -= cross(r1, p) * a.inv_inertia;
                     b_angular_velocity += cross(r2, p) * b.inv_inertia;
-                    //assert!(a_velocity.x.is_finite() && a_velocity.y.is_finite());
-                    //assert!(b_velocity.x.is_finite() && b_velocity.y.is_finite());
+                    //assert!(a_velocity.x().is_finite() && a_velocity.y().is_finite());
+                    //assert!(b_velocity.x().is_finite() && b_velocity.y().is_finite());
                 }
             }
 
@@ -1110,7 +1110,7 @@ impl World {
                       }
                       */
                     if dpn != reali(0) || relative_velocity != Real2::zero() {
-                        //println!("dpn: {} relative velocity: {},{}", dpn, relative_velocity.x, relative_velocity.y);
+                        //println!("dpn: {} relative velocity: {},{}", dpn, relative_velocity.x(), relative_velocity.y());
                     }
 
                     // apply point normal impulse
@@ -1146,8 +1146,8 @@ impl World {
                     b_velocity += pt * b.inv_mass;
                     a_angular_velocity -= cross(point.r1, pt) * a.inv_inertia;
                     b_angular_velocity += cross(point.r2, pt) * b.inv_inertia;
-                    //assert!(a_velocity.x.is_finite() && a_velocity.y.is_finite());
-                    //assert!(b_velocity.x.is_finite() && b_velocity.y.is_finite());
+                    //assert!(a_velocity.x().is_finite() && a_velocity.y().is_finite());
+                    //assert!(b_velocity.x().is_finite() && b_velocity.y().is_finite());
                 }
                 let a = self.bodies.get_mut(a_k).expect("a_k");
                 a.velocity = a_velocity;
@@ -1167,9 +1167,9 @@ impl World {
     pub fn update_positions<D: Fn(Real2) -> Real>(&mut self, dt: Real, map_distance: &D) {
         for (a_k, a) in self.bodies.iter_mut() {
             if a.inv_mass != reali(0) {
-                //assert!(a.velocity.x.is_finite() && a.velocity.y.is_finite());
+                //assert!(a.velocity.x().is_finite() && a.velocity.y().is_finite());
                 let new_pos = a.pos + a.velocity * dt;
-                //assert!(new_pos.x.is_finite() && new_pos.y.is_finite());
+                //assert!(new_pos.x().is_finite() && new_pos.y().is_finite());
                 let max_penetration = a.max_penetration;
                 let (new_pos, _hit) = march_circle(
                     a.pos,
