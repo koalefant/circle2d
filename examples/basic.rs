@@ -645,12 +645,12 @@ pub fn sd_line(p: Real2, a: Real2, b: Real2, r: Real) -> Real {
 }
 
 fn sd_terrain(p: Real2) -> Real {
-    let mut d = -sd_box(p - vec2(1280. * 0.5, 720. * 0.5 - 100.0).into(), vec2(590., 210.).into());
-    d = d.max(-sd_box(p - vec2(400., 470.).into(), vec2(200., 200.).into()));
-    d = d.max(-sd_circle(p, vec2(940., 500.).into(), reali(150)));
+    let mut d = -sd_box(p - vec2(1280. * 0.5, 720. * 0.5).into(), vec2(590., 310.).into());
+    d = d.min(sd_box(p - vec2(600., 670.).into(), vec2(50., 150.).into()));
+    d = d.min(sd_circle(p, vec2(950., 650.).into(), reali(100)));
 
     d = d.min(sd_circle(p, vec2(1040., 350.).into(), reali(60)));
-    d = d.min(sd_circle(p, vec2(170., 450.).into(), reali(100)));
+    d = d.min(sd_circle(p, vec2(80., 450.).into(), reali(100)));
     d = d.min(sd_line(p, vec2(200., 200.).into(), vec2(600.0, 350.0).into(), reali(10)));
     d = d.min(sd_line(p, vec2(800., 350.).into(), vec2(1000.0, 150.0).into(), reali(10)));
     d
