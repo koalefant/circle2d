@@ -5,7 +5,6 @@ authors = ["koalefant <mandarin.cake@gmail.com>"]
 edition = "2018"
 
 [features]
-default = []
 serde_support = ["serde_derive", "serde", "glam/serde", "slotmap/serde"]
 # hashing is disabled by default as it is not implemented for floating point types
 hash_support = []
