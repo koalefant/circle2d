@@ -49,7 +49,7 @@ pub fn realf(v: f32) -> Real {
     fixed_math::Fixed::from_f32(v)
 }
 
-/// this can be locally overriden, for example, to u    se fixed-point math or doubles
+/// this can be locally overriden, for example, to use fixed-point math or doubles
 #[cfg(feature = "fixed_point")]
 pub type Real2 = fixed_math::Fixed2;
 #[cfg(not(feature = "fixed_point"))]
