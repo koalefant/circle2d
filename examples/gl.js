@@ -1,16 +1,18 @@
 // load wasm module and link with gl functions
-// 
-// this file was made by tons of hacks from emscripten's parseTools and library_webgl 
+//
+// this file was made by tons of hacks from emscripten's parseTools and library_webgl
 // https://github.com/emscripten-core/emscripten/blob/master/src/parseTools.js
 // https://github.com/emscripten-core/emscripten/blob/master/src/library_webgl.js
-// 
-// TODO: split to gl.js and loader.js 
+//
+// TODO: split to gl.js and loader.js
 
 const canvas = document.querySelector("#glcanvas");
 const gl = canvas.getContext("webgl");
 if (gl === null) {
     alert("Unable to initialize WebGL. Your browser or machine may not support it.");
 }
+
+var clipboard = null;
 
 var plugins = [];
 
@@ -106,6 +108,43 @@ function UTF8ToString(ptr, maxBytesToRead) {
     return str;
 }
 
+function stringToUTF8(str, heap, outIdx, maxBytesToWrite) {
+    var startIdx = outIdx;
+    var endIdx = outIdx + maxBytesToWrite;
+    for (var i = 0; i < str.length; ++i) {
+        // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
+        // See http://unicode.org/faq/utf_bom.html#utf16-3
+        // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
+        var u = str.charCodeAt(i); // possibly a lead surrogate
+        if (u >= 0xD800 && u <= 0xDFFF) {
+            var u1 = str.charCodeAt(++i);
+            u = 0x10000 + ((u & 0x3FF) << 10) | (u1 & 0x3FF);
+        }
+        if (u <= 0x7F) {
+            if (outIdx >= endIdx) break;
+            heap[outIdx++] = u;
+        } else if (u <= 0x7FF) {
+            if (outIdx + 1 >= endIdx) break;
+            heap[outIdx++] = 0xC0 | (u >> 6);
+            heap[outIdx++] = 0x80 | (u & 63);
+        } else if (u <= 0xFFFF) {
+            if (outIdx + 2 >= endIdx) break;
+            heap[outIdx++] = 0xE0 | (u >> 12);
+            heap[outIdx++] = 0x80 | ((u >> 6) & 63);
+            heap[outIdx++] = 0x80 | (u & 63);
+        } else {
+            if (outIdx + 3 >= endIdx) break;
+
+            if (u >= 0x200000) console.warn('Invalid Unicode code point 0x' + u.toString(16) + ' encountered when serializing a JS string to an UTF-8 string on the asm.js/wasm heap! (Valid unicode code points should be in range 0-0x1FFFFF).');
+
+            heap[outIdx++] = 0xF0 | (u >> 18);
+            heap[outIdx++] = 0x80 | ((u >> 12) & 63);
+            heap[outIdx++] = 0x80 | ((u >> 6) & 63);
+            heap[outIdx++] = 0x80 | (u & 63);
+        }
+    }
+    return outIdx - startIdx;
+}
 var FS = {
     loaded_files: [],
     unique_id: 0
@@ -229,7 +268,7 @@ _webglGet = function (name_, p, type) {
         case 0x8DFA: // GL_SHADER_COMPILER
             ret = 1;
             break;
-        case 0x8DF8: // GL_SHADER_BINARY_FORMATS    
+        case 0x8DF8: // GL_SHADER_BINARY_FORMATS
             if (type != 'EM_FUNC_SIG_PARAM_I' && type != 'EM_FUNC_SIG_PARAM_I64') {
                 GL.recordError(0x500); // GL_INVALID_ENUM
 
@@ -352,6 +391,11 @@ const SAPP_EVENTTYPE_TOUCHES_MOVED = 11;
 const SAPP_EVENTTYPE_TOUCHES_ENDED = 12;
 const SAPP_EVENTTYPE_TOUCHES_CANCELLED = 13;
 
+const SAPP_MODIFIER_SHIFT = 1;
+const SAPP_MODIFIER_CTRL = 2;
+const SAPP_MODIFIER_ALT = 4;
+const SAPP_MODIFIER_SUPER = 8;
+
 into_sapp_mousebutton = function (btn) {
     switch (btn) {
         case 0: return 0;
@@ -363,6 +407,10 @@ into_sapp_mousebutton = function (btn) {
 
 into_sapp_keycode = function (key_code) {
     switch (key_code) {
+        case "Space": return 32;
+        case "Comma": return 44;
+        case "Minus": return 45;
+        case "Period": return 46;
         case "Digit0": return 48;
         case "Digit1": return 49;
         case "Digit2": return 50;
@@ -373,23 +421,109 @@ into_sapp_keycode = function (key_code) {
         case "Digit7": return 55;
         case "Digit8": return 56;
         case "Digit9": return 57;
+        case "Semicolon": return 59;
+        case "Equal": return 61;
         case "KeyA": return 65;
-        case "KeyS": return 83;
+        case "KeyB": return 66;
+        case "KeyC": return 67;
         case "KeyD": return 68;
+        case "KeyE": return 69;
+        case "KeyF": return 70;
+        case "KeyG": return 71;
+        case "KeyH": return 72;
+        case "KeyI": return 73;
+        case "KeyJ": return 74;
+        case "KeyK": return 75;
+        case "KeyL": return 76;
+        case "KeyM": return 77;
+        case "KeyN": return 78;
+        case "KeyO": return 79;
+        case "KeyP": return 80;
+        case "KeyQ": return 81;
+        case "KeyR": return 82;
+        case "KeyS": return 83;
+        case "KeyT": return 84;
+        case "KeyU": return 85;
+        case "KeyV": return 86;
         case "KeyW": return 87;
+        case "KeyX": return 88;
+        case "KeyY": return 89;
+        case "KeyZ": return 90;
+        case "BracketLeft": return 91;
+        case "Backslash": return 92;
+        case "BracketRight": return 93;
+        case "Escape": return 256;
+        case "Enter": return 257;
+        case "Tab": return 258;
+        case "Backspace": return 259;
+        case "Insert": return 260;
+        case "Delete": return 261;
         case "ArrowRight": return 262;
         case "ArrowLeft": return 263;
         case "ArrowDown": return 264;
         case "ArrowUp": return 265;
-        case "Space": return 32;
+        case "PageUp": return 266;
+        case "PageDown": return 267;
         case "Home": return 268;
         case "End": return 269;
-        case "Enter": return 257;
-        case "Delete": return 261;
-        case "Backspace": return 259;
+        case "CapsLock": return 280;
+        case "ScrollLock": return 281;
+        case "NumLock": return 282;
+        case "PrintScreen": return 283;
+        case "Pause": return 284;
+        case "F1": return 290;
+        case "F2": return 291;
+        case "F3": return 292;
+        case "F4": return 293;
+        case "F5": return 294;
+        case "F6": return 295;
+        case "F7": return 296;
+        case "F8": return 297;
+        case "F9": return 298;
+        case "F10": return 299;
+        case "F11": return 300;
+        case "F12": return 301;
+        case "F13": return 302;
+        case "F14": return 303;
+        case "F15": return 304;
+        case "F16": return 305;
+        case "F17": return 306;
+        case "F18": return 307;
+        case "F19": return 308;
+        case "F20": return 309;
+        case "F21": return 310;
+        case "F22": return 311;
+        case "F23": return 312;
+        case "F24": return 313;
+        case "Numpad0": return 320;
+        case "Numpad1": return 321;
+        case "Numpad2": return 322;
+        case "Numpad3": return 323;
+        case "Numpad4": return 324;
+        case "Numpad5": return 325;
+        case "Numpad6": return 326;
+        case "Numpad7": return 327;
+        case "Numpad8": return 328;
+        case "Numpad9": return 329;
+        case "NumpadDecimal": return 330;
+        case "NumpadDivide": return 331;
+        case "NumpadMultiply": return 332;
+        case "NumpadSubstract": return 333;
+        case "NumpadAdd": return 334;
+        case "NumpadEnter": return 335;
+        case "NumpadEqual": return 336;
+        case "ShiftLeft": return 340;
+        case "ControlLeft": return 341;
+        case "AltLeft": return 342;
+        case "OSLeft": return 343;
+        case "ShiftRight": return 344;
+        case "ControlRight": return 345;
+        case "AltRight": return 346;
+        case "OSRight": return 347;
+        case "ContextMenu": return 348;
     }
 
-    console.log("Unsupported keyboard key")
+    console.log("Unsupported keyboard key: ", key_code)
 }
 
 texture_size = function (internalFormat, width, height) {
@@ -436,10 +570,13 @@ var importObject = {
         set_emscripten_shader_hack: function (flag) {
             emscripten_shaders_hack = flag;
         },
+        sapp_set_clipboard: function(ptr, len) {
+            clipboard = UTF8ToString(ptr, len);
+        },
         rand: function () {
             return Math.floor(Math.random() * 2147483647);
         },
-        time: function () {
+        now: function () {
             return Date.now() / 1000.0;
         },
         canvas_width: function () {
@@ -502,7 +639,7 @@ var importObject = {
         glUniform3fv: function (location, count, value) {
             GL.validateGLObjectID(GL.uniforms, location, 'glUniform3fv', 'location');
             assert((value & 3) == 0, 'Pointer to float data passed to glUniform3fv must be aligned to four bytes!');
-            var view = getArray(value, Float32Array, 4 * count);
+            var view = getArray(value, Float32Array, 3 * count);
             gl.uniform3fv(GL.uniforms[location], view);
         },
         glUniform4fv: function (location, count, value) {
@@ -658,6 +795,9 @@ var importObject = {
             gl.linkProgram(GL.programs[program]);
             GL.populateUniformTable(program);
         },
+        glPixelStorei: function (pname, param) {
+            gl.pixelStorei(pname, param);
+        },
         glFramebufferTexture2D: function (target, attachment, textarget, texture, level) {
             GL.validateGLObjectID(GL.textures, texture, 'glFramebufferTexture2D', 'texture');
             gl.framebufferTexture2D(target, attachment, textarget, GL.textures[texture], level);
@@ -675,8 +815,10 @@ var importObject = {
                 return;
             }
             if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
-                console.error("unsupported operation");
-                return;
+                var log = gl.getProgramInfoLog(GL.programs[program]);
+                assert(log !== null);
+
+                getArray(p, Int32Array, 1)[0] = log.length + 1;
             } else if (pname == 0x8B87 /* GL_ACTIVE_UNIFORM_MAX_LENGTH */) {
                 console.error("unsupported operation");
                 return;
@@ -710,6 +852,10 @@ var importObject = {
         glCullFace: function (mode) {
             gl.cullFace(mode);
         },
+        glCopyTexImage2D: function (target, level, internalformat, x, y, width, height, border) {
+            gl.copyTexImage2D(target, level, internalformat, x, y, width, height, border);
+        },
+
         glShaderSource: function (shader, count, string, length) {
             GL.validateGLObjectID(GL.shaders, shader, 'glShaderSource', 'shader');
             var source = GL.getSource(shader, count, string, length);
@@ -809,6 +955,20 @@ var importObject = {
                 GL.buffers[id] = null;
             }
         },
+        glDeleteFramebuffers: function (n, buffers) {
+            for (var i = 0; i < n; i++) {
+                var id = getArray(buffers + i * 4, Uint32Array, 1)[0];
+                var buffer = GL.framebuffers[id];
+
+                // From spec: "glDeleteFrameBuffers silently ignores 0's and names that do not
+                // correspond to existing buffer objects."
+                if (!buffer) continue;
+
+                gl.deleteFramebuffer(buffer);
+                buffer.name = 0;
+                GL.framebuffers[id] = null;
+            }
+        },
         glDeleteTextures: function (n, textures) {
             for (var i = 0; i < n; i++) {
                 var id = getArray(textures + i * 4, Uint32Array, 1)[0];
@@ -839,33 +999,65 @@ var importObject = {
                 var y = relative_position.y;
 
                 var btn = into_sapp_mousebutton(event.button);
-				event.preventDefault();
                 wasm_exports.mouse_down(x, y, btn);
             };
             // SO WEB SO CONSISTENT
             canvas.addEventListener('wheel',
                 function (event) {
+                    event.preventDefault();
                     wasm_exports.mouse_wheel(-event.deltaX, -event.deltaY);
                 });
             canvas.onmouseup = function (event) {
                 var relative_position = mouse_relative_position(event.clientX, event.clientY);
                 var x = relative_position.x;
                 var y = relative_position.y;
-				event.preventDefault();
 
                 var btn = into_sapp_mousebutton(event.button);
                 wasm_exports.mouse_up(x, y, btn);
             };
             canvas.onkeydown = function (event) {
                 var sapp_key_code = into_sapp_keycode(event.code);
-                wasm_exports.key_down(sapp_key_code);
+                switch (sapp_key_code) {
+                    //  space, arrows - prevent scrolling of the page
+                    case 32: case 262: case 263: case 264: case 265:
+                    // F1-F10
+                    case 290: case 291: case 292: case 293: case 294: case 295: case 296: case 297: case 298: case 299:
+                    // backspace is Back on Firefox/Windows
+                    case 259:
+                        event.preventDefault();
+                        break;
+                }
+
+                var modifiers = 0;
+                if (event.ctrlKey) {
+                    modifiers |= SAPP_MODIFIER_CTRL;
+                }
+                if (event.shiftKey) {
+                    modifiers |= SAPP_MODIFIER_SHIFT;
+                }
+                if (event.altKey) {
+                    modifiers |= SAPP_MODIFIER_ALT;
+                }
+                wasm_exports.key_down(sapp_key_code, modifiers, event.repeat);
+                // for "space" preventDefault will prevent
+                // key_press event, so send it here instead
+                if (sapp_key_code == 32) {
+                    wasm_exports.key_press(sapp_key_code);
+                }
             };
             canvas.onkeyup = function (event) {
                 var sapp_key_code = into_sapp_keycode(event.code);
                 wasm_exports.key_up(sapp_key_code);
             };
             canvas.onkeypress = function (event) {
-                wasm_exports.key_press(event.charCode);
+                var sapp_key_code = into_sapp_keycode(event.code);
+
+                // firefox do not send onkeypress events for ctrl+keys and delete key while chrome do
+                // workaround to make this behavior consistent
+                let chrome_only = sapp_key_code == 261 || event.ctrlKey;
+                if (chrome_only == false) {
+                    wasm_exports.key_press(event.charCode);
+                }
             };
 
             canvas.addEventListener("touchstart", function (event) {
@@ -900,6 +1092,34 @@ var importObject = {
             window.onresize = function () {
                 resize(canvas, wasm_exports.resize);
             };
+            window.addEventListener("copy", function(e) {
+                if (clipboard != null) {
+                    event.clipboardData.setData('text/plain', clipboard);
+                    event.preventDefault();
+                }
+            });
+            window.addEventListener("cut", function(e) {
+                if (clipboard != null) {
+                    event.clipboardData.setData('text/plain', clipboard);
+                    event.preventDefault();
+                }
+            });
+
+            window.addEventListener("paste", function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                clipboardData = e.clipboardData || window.clipboardData;
+                pastedData = clipboardData.getData('Text');
+
+                if (pastedData != undefined && pastedData != null && pastedData.length != 0) {
+                    var len = pastedData.length;
+                    var msg = wasm_exports.allocate_vec_u8(len);
+                    var heap = new Uint8Array(wasm_memory.buffer, msg, len);
+                    stringToUTF8(pastedData, heap, 0, len);
+                    wasm_exports.on_clipboard_paste(msg, len);
+                }
+            });
+
             window.requestAnimationFrame(animation);
         },
 
