@@ -291,7 +291,7 @@ fn cross_scalar(s: Real, b: Real2) -> Real2 {
 
 impl Body {
     fn kinetic_energy(&self) -> Real {
-        let mut r = Real::zero();
+        let mut r = reali(0);
         if self.inv_mass != reali(0) {
             r += self.velocity.dot(self.velocity) / self.inv_mass;
         }

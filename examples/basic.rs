@@ -531,7 +531,12 @@ impl Stage {
             images: vec![],
         };
 
-        let shader = Shader::new(ctx, shader::VERTEX, shader::FRAGMENT, shader::META);
+        let shader = Shader::new(ctx, shader::VERTEX, shader::FRAGMENT, ShaderMeta {
+            images: vec!["tex".into()],
+            uniforms: UniformBlockLayout {
+                uniforms: vec![UniformDesc::new("screen_size", UniformType::Float2)],
+            },
+        }).unwrap();
         let pipeline = Pipeline::with_params(
             ctx,
             &[BufferLayout::default()],
@@ -542,7 +547,7 @@ impl Stage {
             ],
             shader,
             miniquad::PipelineParams {
-                color_blend: Some((
+                color_blend: Some(miniquad::BlendState::new(
                     miniquad::Equation::Add,
                     miniquad::BlendFactor::Value(miniquad::BlendValue::SourceAlpha),
                     miniquad::BlendFactor::OneMinusValue(miniquad::BlendValue::SourceAlpha),
@@ -955,13 +960,6 @@ mod shader {
     void main() {
         gl_FragColor = v_color * texture2D(tex, v_uv);
     }"#;
-
-    pub const META: ShaderMeta = ShaderMeta {
-        images: &["tex"],
-        uniforms: UniformBlockLayout {
-            uniforms: &[UniformDesc::new("screen_size", UniformType::Float2)],
-        },
-    };
 
     #[repr(C)]
     pub struct Uniforms {

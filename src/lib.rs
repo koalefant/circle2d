@@ -50,7 +50,6 @@ pub fn realf(v: f32) -> Real {
 }
 
 /// this can be locally overriden, for example, to u    se fixed-point math or doubles
-use num_traits::identities::Zero;
 #[cfg(feature = "fixed_point")]
 pub type Real2 = fixed_math::Fixed2;
 #[cfg(not(feature = "fixed_point"))]

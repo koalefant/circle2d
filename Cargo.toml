@@ -13,12 +13,11 @@ fixed_point = []
 default = []
 
 [dependencies]
-num-traits = "0.2.11"
 glam = "0.9.5"
 slotmap = "0.4.0"
 rustc-hash = "1.1.0"
-serde_derive = { version = "1.0.110", optional = true }
-serde = { version = "1.0.110", optional = true }
+serde_derive = { version = "1.0.116", optional = true }
+serde = { version = "1.0.116", optional = true }
 
 [dev-dependencies]
-miniquad = "0.3.0-alpha.0"
+miniquad = "0.3.0-alpha.19"
